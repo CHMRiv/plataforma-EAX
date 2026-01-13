@@ -9,69 +9,58 @@ const InventarioModule = {
         const content = document.getElementById('page-content');
 
         content.innerHTML = `
-            <div class="inventory-module animate-fadeIn flex flex-col h-full bg-gray-50">
-                <!-- Header Section -->
-                <div class="bg-white border-b border-gray-200 px-8 py-6">
-                    <div class="flex justify-between items-end mb-6">
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">StockMaster</h1>
-                            <p class="text-gray-500 mt-1 text-sm font-medium">Gestión Inteligente de Inventario</p>
-                        </div>
-                        <div class="text-xs text-gray-400 font-mono">
-                            ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </div>
-                    </div>
+            <div class="animate-fadeIn">
+                ${Components.pageHeader({
+            title: 'Inventario',
+            subtitle: 'Gestión inteligente de stock y almacenes',
+            actions: [
+                { label: 'Exportar Reporte', icon: 'download', class: 'btn-outline', action: 'export' },
+                { label: 'Nuevo Producto', icon: 'plus', class: 'btn-primary', action: 'new-product' }
+            ]
+        })}
 
-                    <!-- Navigation Tabs -->
-                    <div class="flex gap-2">
-                        ${this.renderTabButton('dashboard', 'Dashboard', 'layout-dashboard')}
-                        ${this.renderTabButton('inventario', 'Inventario', 'package')}
-                        ${this.renderTabButton('movimientos', 'Movimientos', 'arrow-left-right')}
-                        ${this.renderTabButton('configuracion', 'Configuración', 'settings')}
-                    </div>
-                </div>
+                ${Components.tabs({
+            tabs: [
+                { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+                { id: 'inventario', label: 'Productos', icon: 'package' },
+                { id: 'movimientos', label: 'Movimientos', icon: 'arrow-left-right' },
+                { id: 'configuracion', label: 'Configuración', icon: 'settings' }
+            ],
+            activeTab: this.currentTab
+        })}
 
-                <!-- Main Content Area -->
-                <div class="flex-1 overflow-auto p-8" id="inventory-view-content">
-                   <!-- Content injected here -->
-                </div>
+                <div id="inventory-content" class="mt-6"></div>
             </div>
         `;
 
-        this.attachTabEvents(content);
+        this.attachTabEvents();
         this.renderCurrentView();
+
+        // Attach global header actions
+        content.querySelector('[data-action="new-product"]')?.addEventListener('click', () => {
+            this.showProductForm();
+        });
+
+        content.querySelector('[data-action="export"]')?.addEventListener('click', () => {
+            alert('Exportando inventario...');
+        });
+
+        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
     },
 
-    renderTabButton(id, label, icon) {
-        const isActive = this.currentTab === id;
-        // Premium Tab Style
-        const activeClass = "bg-green-50 text-green-700 border-green-200 shadow-sm ring-1 ring-green-200";
-        const inactiveClass = "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent hover:shadow-sm";
-
-        return `
-            <button class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium border transition-all duration-200 ${isActive ? activeClass : inactiveClass}" 
-                data-tab="${id}">
-                <i data-lucide="${icon}" class="w-4 h-4"></i>
-                ${label}
-            </button>
-        `;
-    },
-
-    attachTabEvents(content) {
-        content.querySelectorAll('[data-tab]').forEach(tab => {
+    attachTabEvents() {
+        document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                this.switchTab(tab.dataset.tab);
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.currentTab = tab.dataset.tab;
+                this.renderCurrentView();
             });
         });
     },
 
-    switchTab(tab) {
-        this.currentTab = tab;
-        this.render();
-    },
-
     renderCurrentView() {
-        const container = document.getElementById('inventory-view-content');
+        const container = document.getElementById('inventory-content');
         if (!container) return;
 
         container.innerHTML = '';
@@ -96,76 +85,80 @@ const InventarioModule = {
         const movimientosHoy = movimientos.filter(m => m.fecha === new Date().toISOString().split('T')[0]).length;
 
         container.innerHTML = `
-            <div class="space-y-8 max-w-7xl mx-auto">
-                <!-- KPI Cards -->
-                <div class="grid grid-cols-4 gap-6">
-                    ${this.renderKpiCard('Total Productos', totalProductos, 'package', 'text-green-600', 'bg-green-50')}
-                    ${this.renderKpiCard('Valor Inventario', Utils.formatCurrency(valorTotal), 'dollar-sign', 'text-emerald-600', 'bg-emerald-50')}
-                    ${this.renderKpiCard('Alertas Stock', stockBajo.length, 'alert-triangle', 'text-amber-500', 'bg-amber-50')}
-                    ${this.renderKpiCard('Movimientos Hoy', movimientosHoy, 'trending-up', 'text-blue-500', 'bg-blue-50')}
-                </div>
-
-                <!-- Main Grid -->
-                <div class="grid grid-cols-3 gap-8">
-                    <!-- Chart Section -->
-                    <div class="col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100/50">
-                        <div class="flex justify-between items-center mb-8">
-                            <div>
-                                <h3 class="font-bold text-gray-800 text-lg">Movimientos de la Semana</h3>
-                                <p class="text-xs text-gray-400">Resumen de actividad reciente</p>
-                            </div>
-                            <button class="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-50 rounded-lg transition-colors"><i data-lucide="more-horizontal"></i></button>
-                        </div>
-                        <div class="h-64 flex items-end justify-between gap-4 px-4 pb-2 border-b border-gray-50">
-                            ${[4, 3, 5, 2, 4, 1, 3].map((val, i) => `
-                                <div class="flex flex-col items-center gap-3 flex-1 group cursor-pointer">
-                                    <div class="w-full bg-gray-50 rounded-lg relative h-48 flex items-end overflow-hidden ring-1 ring-gray-100">
-                                        <div class="w-full bg-green-500 opacity-80 group-hover:opacity-100 transition-all duration-500 rounded-lg" style="height: ${val * 15}%"></div>
-                                    </div>
-                                    <span class="text-xs font-medium text-gray-400 group-hover:text-green-600 transition-colors">01-${10 + i}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <!-- Low Stock Alerts -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100/50 flex flex-col h-[400px]">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="font-bold text-gray-800 text-lg">Stock Bajo</h3>
-                            <span class="text-xs font-bold bg-amber-50 text-amber-600 px-2 py-1 rounded-md border border-amber-100">${stockBajo.length} Items</span>
-                        </div>
-                        <div class="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                            ${stockBajo.length === 0 ?
-                '<div class="h-full flex flex-col items-center justify-center text-gray-400 text-sm"><p>Todo en orden</p></div>' :
-                stockBajo.map(p => `
-                                    <div class="p-4 bg-red-50/30 hover:bg-red-50 transition-colors rounded-xl flex justify-between items-center border border-red-100/30 group">
-                                        <div class="flex-1 min-w-0 pr-4">
-                                            <div class="font-semibold text-gray-800 text-sm mb-1 truncate">${p.nombre}</div>
-                                            <div class="text-xs text-red-500 font-medium flex items-center gap-2">
-                                                <span class="bg-white px-1.5 rounded border border-red-100">Min: ${p.stockMinimo}</span>
-                                                <span>Actual: ${p.stock}</span>
-                                            </div>
-                                        </div>
-                                        <span class="flex-shrink-0 px-2.5 py-1 bg-white text-red-600 text-[10px] font-bold rounded-lg shadow-sm border border-red-100 uppercase tracking-wide">Alerta</span>
-                                    </div>
-                                `).join('')}
-                        </div>
-                    </div>
-                </div>
+            <div class="grid grid-cols-4 gap-6 mb-6">
+                ${Components.statCard({
+            label: 'Total Productos',
+            value: totalProductos,
+            icon: 'package',
+            iconClass: 'primary'
+        })}
+                ${Components.statCard({
+            label: 'Valor Inventario',
+            value: Utils.formatCurrency(valorTotal),
+            icon: 'dollar-sign',
+            iconClass: 'success'
+        })}
+                ${Components.statCard({
+            label: 'Alertas Stock',
+            value: stockBajo.length,
+            icon: 'alert-triangle',
+            iconClass: 'warning',
+            change: stockBajo.length > 0 ? -stockBajo.length : 0 // Just for visual change effect
+        })}
+                ${Components.statCard({
+            label: 'Movimientos Hoy',
+            value: movimientosHoy,
+            icon: 'activity',
+            iconClass: 'info'
+        })}
             </div>
-        `;
-    },
 
-    renderKpiCard(label, value, icon, colorClass, bgClass) {
-        return `
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100/50 hover:shadow-md transition-all duration-200 group">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <div class="text-sm font-medium text-gray-500 mb-2 group-hover:text-gray-700 transition-colors">${label}</div>
-                        <div class="text-3xl font-bold text-gray-900 tracking-tight">${value}</div>
+            <div class="grid grid-cols-3 gap-6">
+                <!-- Stock Bajo List -->
+                <div class="card col-span-2">
+                    <div class="card-header">
+                        <h3 class="card-title">Productos con Stock Bajo</h3>
+                        <span class="badge badge-warning">${stockBajo.length} Items</span>
                     </div>
-                    <div class="p-3.5 ${bgClass} ${colorClass} rounded-2xl group-hover:scale-110 transition-transform">
-                        <i data-lucide="${icon}" class="w-6 h-6"></i>
+                    <div class="card-body p-0">
+                        ${stockBajo.length === 0 ?
+                Components.emptyState({ icon: 'check-circle', title: 'Todo en orden', message: 'No hay productos con stock bajo.' }) :
+                Components.dataTable({
+                    columns: [
+                        { key: 'nombre', label: 'Producto' },
+                        { key: 'sku', label: 'SKU' },
+                        { key: 'stockMinimo', label: 'Min' },
+                        { key: 'stock', label: 'Actual', type: 'badge' } // We can customize this rendering if needed
+                    ],
+                    data: stockBajo,
+                    actions: [{ icon: 'arrow-left-right', label: 'Reponer', action: 'restock' }]
+                })
+            }
+                    </div>
+                </div>
+
+                <!-- Recent Activity (Simple List) -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Últimos Movimientos</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                             ${movimientos.slice(-5).reverse().map(m => `
+                                <div class="timeline-item">
+                                    <div class="timeline-icon ${m.tipo === 'entrada' ? 'success' : 'warning'}">
+                                        <i data-lucide="${m.tipo === 'entrada' ? 'arrow-down-left' : 'arrow-up-right'}"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-title">${m.producto}</div>
+                                        <div class="timeline-description">
+                                            ${m.tipo === 'entrada' ? 'Ingreso de' : 'Salida de'} <strong>${m.cantidad}</strong> unidades
+                                        </div>
+                                        <div class="timeline-time">${m.fecha}</div>
+                                    </div>
+                                </div>
+                             `).join('')}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,185 +169,311 @@ const InventarioModule = {
         const productos = Store.get('productos') || [];
 
         container.innerHTML = `
-            <div class="space-y-6 max-w-7xl mx-auto h-full flex flex-col">
-                <!-- Toolbar -->
-                <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100/50">
-                    <div class="flex items-center gap-4 flex-1">
-                        <!-- Search -->
-                        <div class="relative flex-1 max-w-lg">
-                            <i data-lucide="search" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
-                            <input type="text" id="inv-search" placeholder="Búsqueda global por nombre, SKU..." 
-                                class="w-full pl-11 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-sm bg-gray-50/50 focus:bg-white">
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex gap-4 items-center w-full">
+                        <div class="flex-1">
+                            ${Components.searchInput({ placeholder: 'Buscar productos por nombre, SKU...', id: 'inv-search' })}
+                        </div>
+                        <div class="flex gap-2">
+                            <select class="form-select" id="filter-category" style="width: 150px;">
+                                <option value="">Todas las Categorías</option>
+                                ${Store.get('configuracion_inventario').categorias.map(c => `<option value="${c}">${c}</option>`).join('')}
+                            </select>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center gap-3">
-                        <button class="flex items-center gap-2 px-4 py-2.5 text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl transition-all font-medium text-sm shadow-sm">
-                            <i data-lucide="download" class="w-4 h-4"></i> Exportar
-                        </button>
-                         <button class="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold text-sm shadow-lg shadow-green-200 hover:shadow-green-300 transform hover:-translate-y-0.5"
-                            data-action="new-product">
-                            <i data-lucide="plus" class="w-4 h-4"></i> Nuevo Producto
-                        </button>
+                </div>
+                <div class="card-body p-0" id="inventory-table-container">
+                    <!-- Table rendered dynamically -->
+                </div>
+            </div>
+        `;
+
+        this.renderInventoryTable(productos);
+        this.attachInventoryEvents();
+    },
+
+    renderInventoryTable(productos) {
+        const container = document.getElementById('inventory-table-container');
+        if (!container) return;
+
+        // Custom renderer for Stock column to show alerts
+        // We can pre-process the data to add a "stock_status" field for the badge.
+        const processedData = productos.map(p => {
+            let status = 'success';
+            if (p.stock <= p.stockMinimo) status = 'danger';
+            else if (p.stock <= p.stockMinimo * 2) status = 'warning';
+
+            return {
+                ...p,
+                stock_label: p.stock, // We will use a badge type column but want the text to be the stock number? 
+                // Actually Components.dataTable badge type uses Utils.getStatusColor(value).
+                // Let's cheat a bit and create a specific status field for the badge color logic if we can, 
+                // but Components.js logic for 'badge' does `Utils.getStatusColor(value)`. 
+                // Utils.getStatusColor usually handles strings like 'Activo', 'Inactivo'.
+                // If I pass a number, it returns 'primary' probably. 
+                // So I'll modify the Component logic if needed, OR just stick to basic display.
+                // Let's try to map 'stock' to a string that Utils understands or just leave it.
+                // Actually, let's just use raw values and 'text' type for stock, and maybe a separate status column?
+                // Or I can add a dedicated status field.
+                estado: p.stock <= p.stockMinimo ? 'Bajo' : 'Normal'
+            };
+        });
+
+        container.innerHTML = Components.dataTable({
+            columns: [
+                { key: 'nombre', label: 'Producto' },
+                { key: 'sku', label: 'SKU' },
+                { key: 'categoria', label: 'Categoría' },
+                { key: 'ubicacion', label: 'Ubicación' },
+                { key: 'precio', label: 'Precio', type: 'currency' },
+                { key: 'stock', label: 'Stock' },
+                { key: 'estado', label: 'Estado', type: 'badge' }
+            ],
+            data: processedData,
+            actions: [
+                { icon: 'eye', label: 'Ver', action: 'view' },
+                { icon: 'edit', label: 'Editar', action: 'edit' },
+                { icon: 'trash-2', label: 'Eliminar', action: 'delete' }
+            ]
+        });
+
+        // Re-attach icons
+        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        // Attach action events within the table
+        container.querySelectorAll('[data-action="view"]').forEach(btn =>
+            btn.addEventListener('click', () => this.showProductDetail(parseInt(btn.dataset.id)))
+        );
+        container.querySelectorAll('[data-action="edit"]').forEach(btn =>
+            btn.addEventListener('click', () => this.showProductForm(parseInt(btn.dataset.id)))
+        );
+        container.querySelectorAll('[data-action="delete"]').forEach(btn =>
+            btn.addEventListener('click', () => this.deleteProduct(parseInt(btn.dataset.id)))
+        );
+    },
+
+    attachInventoryEvents() {
+        const searchInput = document.getElementById('inv-search');
+        const filterCategory = document.getElementById('filter-category');
+
+        const filterProducts = () => {
+            let productos = Store.get('productos');
+            const term = searchInput.value.toLowerCase();
+            const cat = filterCategory.value;
+
+            if (term) productos = Utils.search(productos, term, ['nombre', 'sku']);
+            if (cat) productos = productos.filter(p => p.categoria === cat);
+
+            this.renderInventoryTable(productos);
+        };
+
+        searchInput?.addEventListener('input', Utils.debounce(filterProducts, 300));
+        filterCategory?.addEventListener('change', filterProducts);
+    },
+
+    renderMovimientos(container) {
+        const productos = Store.get('productos') || [];
+        const movimientos = Store.get('movimientos') || [];
+
+        container.innerHTML = `
+            <div class="grid grid-cols-3 gap-6">
+                <!-- Form -->
+                <div class="card h-fit">
+                    <div class="card-header">
+                        <h3 class="card-title">Registrar Movimiento</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="movement-form">
+                            <div class="form-group">
+                                <label class="form-label">Producto</label>
+                                <input type="text" list="products-list-mov" id="mov-product" class="form-input" placeholder="Buscar producto..." required>
+                                <datalist id="products-list-mov">
+                                    ${productos.map(p => `<option value="${p.nombre}">SKU: ${p.sku} | Stock: ${p.stock}</option>`).join('')}
+                                </datalist>
+                            </div>
+
+                            ${Components.formInput({
+            label: 'Tipo', name: 'tipo', type: 'select', required: true,
+            options: [{ value: 'entrada', label: 'Entrada' }, { value: 'salida', label: 'Salida' }]
+        })}
+
+                            ${Components.formInput({
+            label: 'Cantidad', name: 'cantidad', type: 'number', value: '1', required: true
+        })}
+
+                           ${Components.formInput({
+            label: 'Referencia / Motivo', name: 'referencia', type: 'textarea'
+        })}
+
+                            <button type="button" class="btn btn-primary w-full mt-4" id="btn-save-movement">
+                                <i data-lucide="save"></i> Registrar
+                            </button>
+                        </form>
                     </div>
                 </div>
 
-                <!-- Table Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden flex flex-col flex-1 min-h-0">
-                     <div class="overflow-auto flex-1">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-50/50 border-b border-gray-100 sticky top-0 z-10 backdrop-blur-sm">
-                                <tr>
-                                    <th class="p-5 w-10"><input type="checkbox" class="rounded border-gray-300 text-green-600 focus:ring-green-500"></th>
-                                    <th class="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Producto</th>
-                                    <th class="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">SKU</th>
-                                    <th class="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Categoría</th>
-                                    <th class="p-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Ubicación</th>
-                                    <th class="p-5 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Stock</th>
-                                    <th class="p-5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-50" id="inv-table-body">
-                                ${productos.map(p => this.renderProductRow(p)).join('')}
-                            </tbody>
-                        </table>
+                <!-- History Table -->
+                <div class="card col-span-2">
+                    <div class="card-header">
+                        <h3 class="card-title">Historial de Movimientos</h3>
                     </div>
-                    <div class="p-4 border-t border-gray-100 bg-gray-50/30 text-xs text-gray-500 flex justify-center items-center gap-2">
-                        <span class="font-medium text-gray-700">${productos.length}</span> productos encontrados
+                    <div class="card-body p-0">
+                         ${Components.dataTable({
+            columns: [
+                { key: 'fecha', label: 'Fecha', type: 'date' },
+                { key: 'tipo', label: 'Tipo', type: 'badge' },
+                { key: 'producto', label: 'Producto' },
+                { key: 'cantidad', label: 'Cant.' },
+                { key: 'referencia', label: 'Ref.' }
+            ],
+            data: movimientos.slice().reverse()
+        })}
                     </div>
                 </div>
             </div>
         `;
 
-        this.attachInventoryEvents();
-        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+        this.attachMovementEvents();
     },
 
-    renderProductRow(p) {
-        const isLowStock = p.stock <= p.stockMinimo;
+    attachMovementEvents() {
+        document.getElementById('btn-save-movement')?.addEventListener('click', () => {
+            const form = document.getElementById('movement-form');
+            const productName = document.getElementById('mov-product').value;
+            const type = form.querySelector('[name="tipo"]').value;
+            const qty = parseInt(form.querySelector('[name="cantidad"]').value);
+            const ref = form.querySelector('[name="referencia"]').value;
 
-        return `
-            <tr class="hover:bg-green-50/30 transition-colors group border-b border-gray-50 last:border-0">
-                <td class="p-5">
-                    <input type="checkbox" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                </td>
-                <td class="p-5">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 overflow-hidden flex-shrink-0 shadow-sm">
-                             ${p.imagen ? `<img src="${p.imagen}" class="w-full h-full object-cover">` : '<i data-lucide="image" class="w-6 h-6 opacity-30"></i>'}
-                        </div>
-                        <div>
-                            <div class="font-bold text-gray-800 text-sm mb-0.5">${p.nombre}</div>
-                            <div class="text-xs text-gray-400 font-medium">${p.modelo || 'Sin modelo'}</div>
-                        </div>
+            if (!productName || !qty) {
+                Components.toast('Complete los campos obligatorios', 'warning');
+                return;
+            }
+
+            const productos = Store.get('productos');
+            const product = productos.find(p => p.nombre === productName);
+
+            if (!product) {
+                Components.toast('Producto no encontrado', 'error');
+                return;
+            }
+
+            // Check stock for output
+            if (type === 'salida' && product.stock < qty) {
+                Components.toast('Stock insuficiente', 'error');
+                return;
+            }
+
+            // Update stock
+            let newStock = product.stock;
+            if (type === 'entrada') newStock += qty;
+            else newStock -= qty;
+
+            Store.update('productos', product.id, { stock: newStock });
+
+            // Record movement
+            Store.add('movimientos', {
+                tipo,
+                producto: productName,
+                cantidad: qty,
+                referencia: ref,
+                fecha: new Date().toISOString().split('T')[0]
+            });
+
+            Components.toast('Movimiento registrado', 'success');
+            this.renderMovimientos(document.getElementById('inventory-content')); // Refresh
+        });
+    },
+
+    renderConfiguracion(container) {
+        const config = Store.get('configuracion_inventario');
+
+        container.innerHTML = `
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card">
+                     <div class="card-header">
+                        <h3 class="card-title">Configuración General</h3>
                     </div>
-                </td>
-                <td class="p-5"><span class="font-mono text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">${p.sku}</span></td>
-                <td class="p-5 text-sm text-gray-600 font-medium">${p.categoria}</td>
-                <td class="p-5 text-sm text-gray-500">${p.ubicacion || '-'}</td>
-                <td class="p-5 text-center">
-                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isLowStock ? 'bg-red-50 text-red-600 ring-1 ring-red-100' : 'bg-gray-100 text-gray-700'}">
-                        ${isLowStock ? '<i data-lucide="alert-circle" class="w-3 h-3"></i>' : ''}
-                        ${p.stock}
+                    <div class="card-body">
+                        ${Components.formInput({
+            label: 'Stock Mínimo por Defecto',
+            name: 'def-stock-min',
+            type: 'number',
+            value: config.stockMinimoDefault,
+            disabled: true // Just a display for now as per previous code logic or we can enable editing
+        })}
                     </div>
-                </td>
-                <td class="p-5 text-right">
-                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                         <button class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100" title="Ver Detalles" onclick="InventarioModule.showProductDetail(${p.id})">
-                            <i data-lucide="eye" class="w-4 h-4"></i>
-                        </button>
-                        <button class="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-100" title="Editar" onclick="InventarioModule.showProductForm(${p.id})">
-                            <i data-lucide="edit-2" class="w-4 h-4"></i>
-                        </button>
-                        <button class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Eliminar">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </div>
+
+                <div class="card">
+                     <div class="card-header">
+                        <h3 class="card-title">Gestión de Datos</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-secondary mb-4">Descarga una copia completa del inventario actual.</p>
+                        <button class="btn btn-outline" onclick="alert('Descargando backup...')">
+                            <i data-lucide="download"></i> Exportar JSON
                         </button>
                     </div>
-                </td>
-            </tr>
+                </div>
+             </div>
+             
+             <!-- Lists for Categories, Locations, etc. -->
+             <div class="grid grid-cols-3 gap-6 mt-6">
+                ${this.renderConfigList('Categorías', config.categorias)}
+                ${this.renderConfigList('Ubicaciones', config.ubicaciones)}
+                ${this.renderConfigList('Tipos de Producto', config.tiposProducto)}
+             </div>
         `;
     },
 
-    attachInventoryEvents() {
-        document.getElementById('inv-search')?.addEventListener('input', Utils.debounce((e) => {
-            const term = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#inv-table-body tr');
-
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(term) ? '' : 'none';
-            });
-        }, 300));
-
-        document.querySelector('[data-action="new-product"]')?.addEventListener('click', () => {
-            this.showProductForm();
-        });
-    },
-
-    showProductDetail(id) {
-        const producto = Store.find('productos', id);
-        if (!producto) return;
-
-        Components.modal({
-            title: producto.nombre,
-            size: 'md',
-            content: `
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="bg-gray-100 rounded-xl h-48 flex items-center justify-center">
-                         ${producto.imagen ? `<img src="${producto.imagen}" class="w-full h-full object-cover rounded-xl">` : '<i data-lucide="package" style="width:64px;height:64px;color:var(--color-gray-400);"></i>'}
-                    </div>
-                    <div>
-                        <div class="mb-4">
-                            <div class="text-sm text-secondary">SKU</div>
-                            <div class="font-medium">${producto.sku}</div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="text-sm text-secondary">Categoría</div>
-                            <div class="font-medium">${producto.categoria}</div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="text-sm text-secondary">Precio</div>
-                            <div class="font-bold text-xl">${Utils.formatCurrency(producto.precio)}</div>
-                        </div>
-                    </div>
+    renderConfigList(title, items) {
+        return `
+            <div class="card h-full">
+                <div class="card-header">
+                    <h3 class="card-title">${title}</h3>
                 </div>
-            `
-        });
-        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+                <div class="card-body">
+                    <ul class="list-disc pl-5 text-sm text-gray-600 space-y-1">
+                        ${items.map(i => `<li>${i}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
     },
 
     showProductForm(id = null) {
         const producto = id ? Store.find('productos', id) : null;
         const isEdit = !!producto;
+        const config = Store.get('configuracion_inventario');
+
+        const content = `
+            <form id="product-form">
+                <div class="grid grid-cols-2 gap-4">
+                    ${Components.formInput({ label: 'Nombre Producto', name: 'nombre', value: producto?.nombre, required: true })}
+                    ${Components.formInput({ label: 'SKU', name: 'sku', value: producto?.sku, required: true })}
+                    ${Components.formInput({
+            label: 'Categoría', name: 'categoria', type: 'select',
+            value: producto?.categoria,
+            options: config.categorias.map(c => ({ value: c, label: c }))
+        })}
+                    ${Components.formInput({
+            label: 'Ubicación', name: 'ubicacion', type: 'select',
+            value: producto?.ubicacion,
+            options: config.ubicaciones.map(u => ({ value: u, label: u }))
+        })}
+                    ${Components.formInput({ label: 'Precio', name: 'precio', type: 'number', value: producto?.precio || 0, required: true })}
+                    ${Components.formInput({ label: 'Stock Actual', name: 'stock', type: 'number', value: producto?.stock || 0 })}
+                    ${Components.formInput({ label: 'Stock Mínimo', name: 'stockMinimo', type: 'number', value: producto?.stockMinimo || config.stockMinimoDefault })}
+                    ${Components.formInput({ label: 'Marca', name: 'marca', value: producto?.marca })}
+                </div>
+            </form>
+        `;
 
         const { modal, close } = Components.modal({
             title: isEdit ? 'Editar Producto' : 'Nuevo Producto',
             size: 'md',
-            content: `
-                <form id="product-form">
-                    <div class="grid grid-cols-2 gap-4">
-                        ${Components.formInput({ label: 'Nombre', name: 'nombre', value: producto?.nombre || '', required: true })}
-                        ${Components.formInput({ label: 'SKU', name: 'sku', value: producto?.sku || '', required: true })}
-                        ${Components.formInput({
-                label: 'Categoría', name: 'categoria', type: 'select', value: producto?.categoria || '',
-                options: Store.get('configuracion_inventario').categorias.map(c => ({ value: c, label: c }))
-            })}
-                        ${Components.formInput({
-                label: 'Tipo', name: 'tipo', type: 'select', value: producto?.tipo || 'Equipo',
-                options: Store.get('configuracion_inventario').tiposProducto.map(t => ({ value: t, label: t }))
-            })}
-                        ${Components.formInput({ label: 'Marca', name: 'marca', value: producto?.marca || '' })}
-                        ${Components.formInput({ label: 'Modelo', name: 'modelo', value: producto?.modelo || '' })}
-                        ${Components.formInput({ label: 'Precio', name: 'precio', type: 'number', value: producto?.precio || '', required: true })}
-                        ${Components.formInput({ label: 'Stock', name: 'stock', type: 'number', value: producto?.stock || 0 })}
-                        ${Components.formInput({ label: 'Stock Mínimo', name: 'stockMinimo', type: 'number', value: producto?.stockMinimo || 5 })}
-                        ${Components.formInput({
-                label: 'Ubicación', name: 'ubicacion', type: 'select', value: producto?.ubicacion || '',
-                options: Store.get('configuracion_inventario').ubicaciones.map(u => ({ value: u, label: u }))
-            })}
-                    </div>
-                </form>
-            `,
+            content,
             footer: `
                 <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
                 <button class="btn btn-primary" data-action="save">Guardar</button>
@@ -368,291 +487,73 @@ const InventarioModule = {
 
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            data.precio = parseInt(data.precio);
+
+            // Parse numbers
+            data.precio = parseFloat(data.precio);
             data.stock = parseInt(data.stock);
             data.stockMinimo = parseInt(data.stockMinimo);
 
-            if (isEdit) {
-                Store.update('productos', id, data);
-            } else {
-                Store.add('productos', data);
-            }
+            if (isEdit) Store.update('productos', id, data);
+            else Store.add('productos', data);
 
+            Components.toast(isEdit ? 'Producto actualizado' : 'Producto creado', 'success');
             close();
-            this.renderTab(this.currentTab);
+            this.renderCurrentView(); // Refresh view
         });
     },
 
-    renderMovimientos(container) {
-        const productos = Store.get('productos') || [];
-        const movimientos = Store.get('movimientos') || [];
+    showProductDetail(id) {
+        const p = Store.find('productos', id);
+        if (!p) return;
 
-        container.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 h-full">
-                <!-- Registration Form -->
-                <div class="col-span-1 bg-white p-8 rounded-2xl shadow-sm border border-gray-100/50 h-fit">
-                    <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                        <div class="p-2 bg-green-50 rounded-lg text-green-600">
-                             <i data-lucide="arrow-left-right" class="w-5 h-5"></i>
+        Components.modal({
+            title: 'Detalle de Producto',
+            size: 'sm',
+            content: `
+                <div class="flex flex-col gap-4">
+                    <div class="text-center mb-4">
+                        <div class="w-24 h-24 bg-gray-100 rounded-lg mx-auto flex items-center justify-center mb-2">
+                             <i data-lucide="package" style="width:40px;height:40px;color:#9ca3af;"></i>
                         </div>
-                        Registrar Movimiento
-                    </h3>
-                    
-                    <form id="movement-quick-form" class="space-y-5">
-                        <div class="space-y-1.5">
-                            <label class="block text-sm font-semibold text-gray-700">Buscar Producto</label>
-                            <div class="relative">
-                                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"></i>
-                                <input type="text" list="products-list" name="product_name" class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium text-sm" placeholder="Escriba nombre o código...">
-                            </div>
-                            <datalist id="products-list">
-                                ${productos.map(p => `<option value="${p.nombre}">SKU: ${p.sku} | Stock: ${p.stock}</option>`).join('')}
-                            </datalist>
+                        <h3 class="text-lg font-bold">${p.nombre}</h3>
+                        <p class="text-sm text-secondary">${p.sku}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="p-3 bg-gray-50 rounded border border-gray-100">
+                            <span class="block text-xs text-secondary">Categoría</span>
+                            <span class="font-medium">${p.categoria}</span>
                         </div>
-
-                        <div class="space-y-1.5">
-                            <label class="block text-sm font-semibold text-gray-700">Tipo de Movimiento</label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <label class="cursor-pointer group relative">
-                                    <input type="radio" name="tipo" value="entrada" class="peer sr-only" checked>
-                                    <div class="p-4 bg-gray-50 text-gray-600 rounded-xl text-center peer-checked:bg-green-50 peer-checked:text-green-700 peer-checked:border-green-200 border border-transparent transition-all hover:bg-white hover:shadow-md hover:-translate-y-0.5 peer-checked:shadow-sm ring-1 ring-transparent peer-checked:ring-green-200">
-                                        <div class="font-bold flex flex-col items-center gap-1">
-                                            <i data-lucide="arrow-down-left" class="w-5 h-5 mb-1 opacity-50 peer-checked:opacity-100"></i>
-                                            Entrada
-                                        </div>
-                                    </div>
-                                </label>
-                                <label class="cursor-pointer group relative">
-                                    <input type="radio" name="tipo" value="salida" class="peer sr-only">
-                                    <div class="p-4 bg-gray-50 text-gray-600 rounded-xl text-center peer-checked:bg-red-50 peer-checked:text-red-700 peer-checked:border-red-200 border border-transparent transition-all hover:bg-white hover:shadow-md hover:-translate-y-0.5 peer-checked:shadow-sm ring-1 ring-transparent peer-checked:ring-red-200">
-                                        <div class="font-bold flex flex-col items-center gap-1">
-                                            <i data-lucide="arrow-up-right" class="w-5 h-5 mb-1 opacity-50 peer-checked:opacity-100"></i>
-                                            Salida
-                                        </div>
-                                    </div>
-                                </label>
-                            </div>
+                        <div class="p-3 bg-gray-50 rounded border border-gray-100">
+                             <span class="block text-xs text-secondary">Ubicación</span>
+                            <span class="font-medium">${p.ubicacion}</span>
                         </div>
-
-                        <div class="space-y-1.5">
-                            <label class="block text-sm font-semibold text-gray-700">Cantidad</label>
-                            <input type="number" name="cantidad" min="1" value="1" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-bold text-gray-800" required>
+                         <div class="p-3 bg-gray-50 rounded border border-gray-100">
+                             <span class="block text-xs text-secondary">Precio</span>
+                            <span class="font-medium">${Utils.formatCurrency(p.precio)}</span>
                         </div>
-
-                        <div class="space-y-1.5">
-                            <label class="block text-sm font-semibold text-gray-700">Motivo / Comentario</label>
-                            <textarea name="referencia" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all text-sm" placeholder="Ej: Compra mensual, Venta #123..."></textarea>
+                         <div class="p-3 bg-gray-50 rounded border border-gray-100">
+                             <span class="block text-xs text-secondary">Stock</span>
+                            <span class="font-medium ${p.stock <= p.stockMinimo ? 'text-red-600' : 'text-green-600'}">${p.stock}</span>
                         </div>
-
-                        <button type="button" class="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-green-200 hover:shadow-green-300 transform active:scale-95 transition-all flex items-center justify-center gap-2" id="btn-save-movement">
-                            <span>Confirmar</span>
-                            <i data-lucide="check" class="w-5 h-5"></i>
-                        </button>
-                    </form>
-                </div>
-
-                <!-- History -->
-                <div class="col-span-2 space-y-4 flex flex-col h-full overflow-hidden">
-                    <h3 class="text-xl font-bold text-gray-800 px-1">Historial Reciente</h3>
-                    
-                    <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex-1 border border-gray-100/50 flex flex-col">
-                         ${movimientos.length === 0 ?
-                `<div class="h-full flex flex-col items-center justify-center text-gray-400 gap-4">
-                                <div class="p-4 bg-gray-50 rounded-full"><i data-lucide="clipboard-list" class="w-8 h-8 opacity-50"></i></div>
-                                <p class="font-medium">No hay movimientos registrados</p>
-                            </div>` :
-                `<div class="overflow-auto flex-1 p-0">
-                                <table class="w-full text-left">
-                                    <thead class="bg-gray-50/80 text-xs font-bold text-gray-500 uppercase sticky top-0 backdrop-blur-sm border-b border-gray-100">
-                                        <tr>
-                                            <th class="p-5">Tipo</th>
-                                            <th class="p-5">Producto</th>
-                                            <th class="p-5">Cant.</th>
-                                            <th class="p-5">Fecha</th>
-                                            <th class="p-5">Ref.</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-50 text-sm">
-                                        ${movimientos.slice().reverse().map(m => `
-                                            <tr class="hover:bg-gray-50 transition-colors">
-                                                <td class="p-5">
-                                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${m.tipo === 'entrada' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}">
-                                                        <i data-lucide="${m.tipo === 'entrada' ? 'arrow-down-left' : 'arrow-up-right'}" class="w-3 h-3"></i>
-                                                        ${m.tipo === 'entrada' ? 'Entrada' : 'Salida'}
-                                                    </span>
-                                                </td>
-                                                <td class="p-5 font-bold text-gray-800">${m.producto}</td>
-                                                <td class="p-5 font-mono font-bold text-gray-600">${m.cantidad}</td>
-                                                <td class="p-5 text-gray-500 text-xs">${m.fecha}</td>
-                                                <td class="p-5 text-gray-400 text-xs max-w-[200px] truncate" title="${m.referencia}">${m.referencia || '-'}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>`
-            }
                     </div>
                 </div>
-            </div>
-        `;
-
-        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        this.attachMovementEvents();
-    },
-
-    attachMovementEvents() {
-        document.getElementById('btn-save-movement')?.addEventListener('click', () => {
-            const form = document.getElementById('movement-quick-form');
-            if (!form) return;
-
-            const nameInput = form.querySelector('[name="product_name"]');
-            const typeInput = form.querySelector('[name="tipo"]:checked');
-            const qtyInput = form.querySelector('[name="cantidad"]');
-            const refInput = form.querySelector('[name="referencia"]');
-
-            if (!nameInput.value || !qtyInput.value) {
-                alert('Por favor complete los campos obligatorios');
-                return;
-            }
-
-            const data = {
-                tipo: typeInput.value,
-                producto: nameInput.value,
-                cantidad: parseInt(qtyInput.value),
-                referencia: refInput.value,
-                fecha: new Date().toISOString().split('T')[0]
-            };
-
-            const productos = Store.get('productos');
-            const product = productos.find(p => p.nombre === data.producto);
-
-            if (!product) {
-                alert('Producto no encontrado. Seleccione uno de la lista.');
-                return;
-            }
-
-            let newStock = product.stock;
-            if (data.tipo === 'entrada') newStock += data.cantidad;
-            else if (data.tipo === 'salida') {
-                if (product.stock < data.cantidad) {
-                    alert('Stock insuficiente para realizar esta salida.');
-                    return;
-                }
-                newStock -= data.cantidad;
-            }
-
-            Store.add('movimientos', data);
-            Store.update('productos', product.id, { stock: newStock });
-
-            Components.toast('Movimiento registrado con éxito', 'success');
-
-            nameInput.value = '';
-            qtyInput.value = '1';
-            refInput.value = '';
-
-            this.switchTab('movimientos');
+            `
         });
+        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
     },
 
-    renderConfiguracion(container) {
-        const config = Store.get('configuracion_inventario');
-
-        container.innerHTML = `
-            <div class="space-y-8 max-w-5xl mx-auto">
-                <!-- Personalization -->
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100/50">
-                    <h3 class="font-bold text-gray-800 text-lg mb-6 flex items-center gap-2">
-                        <i data-lucide="palette" class="w-5 h-5 text-gray-400"></i>
-                        Personalización
-                    </h3>
-                    
-                    <div class="grid grid-cols-2 gap-12">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-4">Tema de Color</label>
-                            <div class="flex gap-4">
-                                <button class="w-10 h-10 rounded-full bg-blue-600 ring-2 ring-offset-2 ring-blue-600 hover:scale-110 transition-transform shadow-sm"></button>
-                                <button class="w-10 h-10 rounded-full bg-green-500 hover:scale-110 transition-transform shadow-sm"></button>
-                                <button class="w-10 h-10 rounded-full bg-purple-600 hover:scale-110 transition-transform shadow-sm"></button>
-                                <button class="w-10 h-10 rounded-full bg-orange-500 hover:scale-110 transition-transform shadow-sm"></button>
-                                <button class="w-10 h-10 rounded-full bg-red-600 hover:scale-110 transition-transform shadow-sm"></button>
-                                <button class="w-10 h-10 rounded-full bg-gray-600 hover:scale-110 transition-transform shadow-sm"></button>
-                            </div>
-                        </div>
-
-                        <div>
-                             <label class="block text-sm font-semibold text-gray-700 mb-4">Stock Mínimo Predeterminado</label>
-                             <div class="flex items-center gap-4">
-                                <input type="number" value="${config.stockMinimoDefault}" class="w-32 px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 font-medium text-gray-600 focus:outline-none" disabled>
-                                <span class="text-xs text-gray-400">Valor por defecto para nuevos productos.</span>
-                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Lists Configuration -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    ${this.renderConfigList('Tipos de Producto', config.tiposProducto, 'tag')}
-                    ${this.renderConfigList('Ubicaciones', config.ubicaciones, 'map-pin')}
-                    ${this.renderConfigList('Categorías', config.categorias, 'folder')}
-                </div>
-
-                <!-- Data Management -->
-                <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100/50">
-                    <h3 class="font-bold text-gray-800 text-lg mb-6 flex items-center gap-2">
-                        <i data-lucide="database" class="w-5 h-5 text-gray-400"></i>
-                        Gestión de Datos
-                    </h3>
-                    
-                    <div class="bg-gray-50 p-6 rounded-xl flex items-center justify-between border border-gray-100">
-                         <div>
-                            <div class="font-bold text-gray-800 mb-1">Copia de Seguridad</div>
-                            <div class="text-sm text-gray-500">Descarga una copia completa de tu inventario.</div>
-                         </div>
-                         <div class="flex gap-3">
-                             <button class="px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all" onclick="alert('Descargando backup.json...')">
-                                <i data-lucide="download" class="w-4 h-4 inline mr-2"></i>Exportar Backup
-                             </button>
-                             <button class="px-5 py-2.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all" onclick="alert('Feature coming soon')">
-                                <i data-lucide="upload" class="w-4 h-4 inline mr-2"></i>Restaurar Backup
-                             </button>
-                         </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-    },
-
-    renderConfigList(title, items, icon) {
-        return `
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100/50 flex flex-col h-full">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                        <i data-lucide="${icon}" class="w-4 h-4 text-gray-400"></i>
-                        ${title}
-                    </h3>
-                </div>
-                
-                <div class="flex gap-2 mb-4">
-                    <input type="text" placeholder="Nuevo item..." class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white transition-all focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none" disabled>
-                    <button class="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all" disabled>
-                        <i data-lucide="plus" class="w-4 h-4"></i>
-                    </button>
-                </div>
-
-                <div class="space-y-2 flex-1 overflow-y-auto max-h-48 pr-1 custom-scrollbar">
-                    ${items.map(item => `
-                        <div class="flex justify-between items-center text-sm p-3 bg-gray-50 rounded-xl group hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200 cursor-default">
-                            <span class="text-gray-700 font-medium">${item}</span>
-                            <button class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1">
-                                <i data-lucide="x" class="w-3 h-3"></i>
-                            </button>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
+    deleteProduct(id) {
+        Components.confirm({
+            title: 'Eliminar Producto',
+            message: '¿Estás seguro? Esta acción no se puede deshacer.',
+            type: 'danger'
+        }).then(confirmed => {
+            if (confirmed) {
+                Store.delete('productos', id);
+                Components.toast('Producto eliminado', 'success');
+                this.renderCurrentView();
+            }
+        });
     }
 };
 

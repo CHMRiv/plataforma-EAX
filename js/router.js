@@ -33,29 +33,43 @@ const Router = {
 
     // Handle route change
     handleRoute() {
+        console.log('Router: Handling route change...');
         const path = this.getPath();
         const params = this.parseParams(path);
 
+        console.log(`Router: Navigating to ${params.module} / ${params.view || 'default'}`);
+
         // Update active state in sidebar
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-            if (link.dataset.module === params.module) {
-                link.classList.add('active');
-            }
-        });
+        const navLinks = document.querySelectorAll('.nav-link');
+        if (navLinks.length > 0) {
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.module === params.module) {
+                    link.classList.add('active');
+                }
+            });
+        }
 
         // Update breadcrumb
         this.updateBreadcrumb(params);
 
         // Update store
-        Store.state.currentModule = params.module;
-        Store.state.currentView = params.view;
+        if (window.Store && Store.state) {
+            Store.state.currentModule = params.module;
+            Store.state.currentView = params.view;
+        }
 
         // Find and execute route handler
         const handler = this.routes[params.module];
         if (handler) {
-            handler(params);
+            try {
+                handler(params);
+                console.log(`Router: Rendered module ${params.module}`);
+            } catch (err) {
+                console.error(`Router: Error executing handler for ${params.module}:`, err);
+            }
         } else {
+            console.warn(`Router: No handler for module ${params.module}`);
             this.render404();
         }
 
@@ -72,11 +86,13 @@ const Router = {
             desarrollo: 'Desarrollo',
             inventario: 'Inventario',
             rrhh: 'RRHH',
-            licitaciones: 'Licitaciones',
+            licitaciones: 'Ventas Públicas',
             canvas: 'Canvas',
             pim: 'PIM',
+            postventa: 'Postventa',
             comunicaciones: 'Comunicaciones',
-            intranet: 'Intranet'
+            intranet: 'Intranet',
+            proveedores: 'Proveedores'
         };
 
         let items = [{ name: moduleNames[params.module] || params.module, path: `#/${params.module}` }];
@@ -100,14 +116,18 @@ const Router = {
 
     // Render 404
     render404() {
+        console.log('Router: Rendering 404 page');
         const content = document.getElementById('page-content');
+        if (!content) return;
+
         content.innerHTML = Components.emptyState({
             icon: 'file-question',
             title: 'Página no encontrada',
             message: 'La página que buscas no existe o ha sido movida.',
             action: { label: 'Ir al Dashboard', action: 'go-dashboard', icon: 'home' }
         });
-        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        if (window.lucide) lucide.createIcons();
 
         content.querySelector('[data-action="go-dashboard"]')?.addEventListener('click', () => {
             this.navigate('/dashboard');
@@ -116,11 +136,16 @@ const Router = {
 
     // Initialize
     init() {
+        console.log('Router: Initializing...');
         // Listen for hash changes
-        window.addEventListener('hashchange', () => this.handleRoute());
+        window.addEventListener('hashchange', () => {
+            console.log('Router: Hash change detected:', window.location.hash);
+            this.handleRoute();
+        });
 
         // Handle initial route
-        if (!window.location.hash) {
+        if (!window.location.hash || window.location.hash === '#/') {
+            console.log('Router: No initial hash, setting to #/dashboard');
             window.location.hash = '/dashboard';
         } else {
             this.handleRoute();

@@ -2,7 +2,9 @@
    Aura Platform - CRM Module
    ========================================================================== */
 
-const CRMModule = {
+console.log('CRMModule: Script crm.js cargando...');
+
+var CRMModule = window.CRMModule = {
     currentTab: 'clientes',
 
     render() {
@@ -28,7 +30,6 @@ const CRMModule = {
             tabs: [
                 { id: 'clientes', label: 'Clientes', icon: 'users' },
                 { id: 'negocios', label: 'Negocios', icon: 'briefcase' },
-                { id: 'inbox', label: 'Bandeja de Entrada', icon: 'mail' },
                 { id: 'actividades', label: 'Actividades', icon: 'calendar' }
             ],
             activeTab: this.currentTab
@@ -76,9 +77,6 @@ const CRMModule = {
             case 'negocios':
                 this.renderNegocios(container);
                 break;
-            case 'inbox':
-                this.renderInbox(container);
-                break;
             case 'actividades':
                 this.renderActividades(container);
                 break;
@@ -86,11 +84,8 @@ const CRMModule = {
     },
 
     renderClientes(container) {
-        const clientes = Store.get('clientes');
-
-        container.innerHTML = `
-            <div class="card">
-                <div class="card-header">
+        container.innerHTML = '<div class="p-4">Clientes view temporarily disabled for debugging.</div>';
+    },
                     <div class="flex gap-4 items-center">
                         ${Components.searchInput({ placeholder: 'Buscar clientes...', id: 'search-clientes' })}
                         <select class="form-select" style="width: 180px;" id="filter-estado">
@@ -612,346 +607,12 @@ const CRMModule = {
         });
     },
 
-    renderInbox(container) {
-        const mensajes = Store.get('crm_mensajes') || [];
-        const negocios = Store.get('oportunidades') || [];
 
-        container.innerHTML = `
-            <div class="grid grid-cols-12 gap-0 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-fadeIn" style="height: 700px;">
-                <!-- Sidebar Mensajes -->
-                <div class="col-span-4 border-r border-gray-100 flex flex-col bg-gray-50/50">
-                    <div class="p-6 border-b border-gray-100 bg-white">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-black text-gray-900">Bandeja de Entrada</h3>
-                            <button class="btn btn-icon btn-ghost" title="Actualizar">
-                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                        ${Components.searchInput({ placeholder: 'Buscar en correos...', id: 'search-inbox' })}
-                    </div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar" id="inbox-list">
-                        ${mensajes.length > 0 ? mensajes.map(m => `
-                            <div class="p-5 border-b border-gray-100 cursor-pointer hover:bg-white transition-all msg-item ${m.leido ? 'opacity-80' : 'bg-primary-50/50 border-l-4 border-l-primary-500'}" data-id="${m.id}">
-                                <div class="flex justify-between items-start mb-1">
-                                    <div class="font-bold text-gray-900 truncate pr-2">${m.de}</div>
-                                    <div class="text-[10px] text-gray-400 font-bold whitespace-nowrap">${Utils.formatRelativeTime(m.fecha)}</div>
-                                </div>
-                                <div class="text-xs font-black text-primary-600 mb-2 truncate">${m.asunto}</div>
-                                <div class="text-xs text-secondary line-clamp-2">${m.cuerpo}</div>
-                                ${m.negocioId ? `
-                                    <div class="mt-3 flex items-center gap-1.5">
-                                        <span class="px-2 py-0.5 rounded bg-gray-200 text-[9px] font-black text-gray-600 uppercase tracking-tighter flex items-center gap-1">
-                                            <i data-lucide="briefcase" class="w-2.5 h-2.5"></i> ${negocios.find(n => n.id === m.negocioId)?.titulo || 'Negocio'}
-                                        </span>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `).join('') : '<div class="p-12 text-center text-gray-400">No hay mensajes.</div>'}
-                    </div>
-                </div>
-
-                <!-- Contenido Mensaje -->
-                <div class="col-span-8 flex flex-col bg-white" id="message-view">
-                    <div class="flex-1 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
-                        <div class="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                            <i data-lucide="mail-open" class="w-10 h-10 opacity-20"></i>
-                        </div>
-                        <h4 class="text-lg font-bold text-gray-900 mb-2">Selecciona una comunicación</h4>
-                        <p class="text-sm max-w-xs">Haz clic en un mensaje de la lista para ver el historial completo y gestionar la asociación.</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        this.attachInboxEvents(container);
-    },
-
-    attachInboxEvents(container) {
-        if (window.lucide) lucide.createIcons();
-
-        container.querySelectorAll('.msg-item').forEach(item => {
-            item.onclick = () => {
-                const msgId = parseInt(item.dataset.id);
-                this.viewMessage(msgId);
-                container.querySelectorAll('.msg-item').forEach(i => i.classList.remove('bg-white', 'shadow-inner'));
-                item.classList.add('bg-white', 'shadow-inner');
-            };
-        });
-    },
-
-    viewMessage(id) {
-        const msg = Store.find('crm_mensajes', id);
-        const container = document.getElementById('message-view');
-        if (!container || !msg) return;
-
-        const negocios = Store.get('oportunidades');
-
-        container.innerHTML = `
-            <div class="flex flex-col h-full animate-fadeIn">
-                <!-- Message Header -->
-                <div class="p-8 border-b border-gray-100 bg-white">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 class="text-xl font-black text-gray-900 mb-1">${msg.asunto}</h2>
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
-                                    ${Utils.getInitials(msg.de)}
-                                </div>
-                                <div>
-                                    <div class="text-sm font-bold text-gray-800">${msg.de} <span class="text-xs text-gray-400 font-normal">&lt;${msg.email}&gt;</span></div>
-                                    <div class="text-[10px] text-gray-400 font-bold uppercase">${Utils.formatDate(msg.fecha)} • ${msg.fecha.split(' ')[1]}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button class="btn btn-sm btn-ghost" title="Responder">
-                                <i data-lucide="reply" class="w-4 h-4"></i>
-                            </button>
-                            <button class="btn btn-sm btn-ghost" title="Reenviar">
-                                <i data-lucide="forward" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                        <div class="flex-1">
-                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Negocio Vinculado</div>
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="briefcase" class="w-4 h-4 text-primary-500"></i>
-                                <select class="bg-transparent border-none text-sm font-bold text-gray-900 focus:ring-0 cursor-pointer p-0" id="link-negocio-msg">
-                                    <option value="">— Sin vincular —</option>
-                                    ${negocios.map(n => `<option value="${n.id}" ${n.id === msg.negocioId ? 'selected' : ''}>${n.titulo}</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-                        ${msg.negocioId ? `
-                            <button class="btn btn-xs btn-primary bg-primary-50 text-primary-600 border-none hover:bg-primary-100" onclick="CRMModule.showNegocioDetail(${msg.negocioId})">
-                                Ver Negocio <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-
-                <!-- Message Body -->
-                <div class="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
-                    <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                        ${msg.cuerpo.replace(/\n/g, '<br>')}
-                    </div>
-                </div>
-
-                <!-- Message Footer (Actions) -->
-                <div class="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                    <button class="btn btn-outline">Archivar</button>
-                    <button class="btn btn-primary px-8">Responder</button>
-                </div>
-            </div>
-        `;
-
-        if (window.lucide) lucide.createIcons();
-
-        // Handle Linking
-        const select = document.getElementById('link-negocio-msg');
-        if (select) {
-            select.onchange = (e) => {
-                const val = e.target.value ? parseInt(e.target.value) : null;
-                Store.update('crm_mensajes', msg.id, { negocioId: val });
-                Components.toast('Vinculación actualizada', 'success');
-                // Re-render inbox to show changes
-                this.renderInbox(document.getElementById('crm-content'));
-                this.viewMessage(msg.id);
-            };
-        }
-    },
-
-    showNegocioDetail(id) {
-        const negocio = Store.find('oportunidades', id);
-        if (!negocio) return;
-
-        let activeTab = 'actividades';
-
-        const renderHistory = () => {
-            const actividades = Store.filter('actividades', a => a.oportunidadId === id).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-            const correos = Store.filter('crm_mensajes', m => m.negocioId === id).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            // Merge and sort all interactions
-            const interactions = [
-                ...actividades.map(a => ({ ...a, interactionType: 'activity' })),
-                ...correos.map(m => ({ ...m, interactionType: 'email' }))
-            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            if (interactions.length === 0) return `
-                <div class="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
-                    <i data-lucide="history" class="w-16 h-16 mb-4"></i>
-                    <p class="font-bold">No hay actividad registrada aún</p>
-                    <p class="text-xs">Usa los botones superiores para registrar llamadas o correos.</p>
-                </div>
-            `;
-
-            return `
-                <div class="relative pl-8 border-l-2 border-gray-100 space-y-8 mt-4">
-                    ${interactions.map(item => {
-                if (item.interactionType === 'activity') {
-                    const icon = item.tipo === 'llamada' ? 'phone' : item.tipo === 'reunion' ? 'users' : 'calendar';
-                    return `
-                                <div class="relative">
-                                    <div class="absolute -left-[41px] top-0 w-8 h-8 rounded-full bg-white border-2 border-primary-500 flex items-center justify-center text-primary-500 shadow-sm z-10">
-                                        <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
-                                    </div>
-                                    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">${item.tipo} • ${Utils.formatRelativeTime(item.fecha)}</div>
-                                                <h5 class="font-bold text-gray-900">${item.titulo}</h5>
-                                            </div>
-                                            <span class="badge ${item.completada ? 'badge-success' : 'badge-warning'} text-[10px] uppercase">${item.completada ? 'Completado' : 'Pendiente'}</span>
-                                        </div>
-                                        ${item.resultado ? `<div class="bg-gray-50 p-4 rounded-2xl text-sm text-gray-600 mt-2 border-l-4 border-primary-200">"${item.resultado}"</div>` : ''}
-                                        <div class="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                            <i data-lucide="user" class="w-3 h-3"></i> RESPONSABLE: ${item.responsable}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                } else {
-                    return `
-                                <div class="relative">
-                                    <div class="absolute -left-[41px] top-0 w-8 h-8 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center text-amber-500 shadow-sm z-10">
-                                        <i data-lucide="mail" class="w-3.5 h-3.5"></i>
-                                    </div>
-                                    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">CORREO • ${Utils.formatRelativeTime(item.fecha)}</div>
-                                                <h5 class="font-bold text-gray-900">${item.asunto}</h5>
-                                            </div>
-                                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
-                                                ${Utils.getInitials(item.de)}
-                                            </div>
-                                        </div>
-                                        <div class="text-sm text-gray-600 line-clamp-3 my-3 leading-relaxed">
-                                            ${item.cuerpo}
-                                        </div>
-                                        <div class="flex justify-between items-center pt-4 border-t border-gray-50">
-                                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">DE: ${item.de}</span>
-                                            <button class="text-xs font-bold text-amber-600 hover:underline" onclick="CRMModule.currentTab='inbox'; CRMModule.render(); CRMModule.viewMessage(${item.id}); Components.modal.closeAll();">Ver correo completo</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                }
-            }).join('')}
-                </div>
-            `;
-        };
-
-        const modalHTML = `
-            <div class="flex flex-col h-full bg-gray-50/50 -m-6 animate-fadeIn" style="height: 80vh;">
-                <!-- Modern Header HubSpot Style -->
-                <div class="bg-white p-8 border-b border-gray-100 shadow-sm flex justify-between items-end">
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                                <i data-lucide="briefcase" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Negocio Comercial</div>
-                                <h2 class="text-2xl font-black text-gray-900">${negocio.titulo}</h2>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Cliente</span>
-                                <span class="text-sm font-bold text-gray-700">${negocio.cliente}</span>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200"></div>
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Valor</span>
-                                <span class="text-sm font-black text-blue-600">${Utils.formatCurrency(negocio.valor)}</span>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200"></div>
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Etapa</span>
-                                <span class="badge badge-${Utils.getStatusColor(negocio.etapa)} mt-1">${negocio.etapa.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button class="btn btn-outline" onclick="CRMModule.showOportunidadForm(${negocio.id})"><i data-lucide="edit-3" class="w-4 h-4 mr-2"></i> Editar</button>
-                        <button class="btn btn-primary shadow-lg shadow-primary-200"><i data-lucide="send" class="w-4 h-4 mr-2"></i> Enviar Cotización</button>
-                    </div>
-                </div>
-
-                <div class="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
-                    <!-- Sidebar Left: Details -->
-                    <div class="col-span-4 border-r border-gray-100 p-8 overflow-y-auto bg-white custom-scrollbar">
-                        <div class="space-y-8">
-                            <section>
-                                <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500"></i> Acerca de este negocio
-                                </h4>
-                                <div class="grid grid-cols-1 gap-4">
-                                    ${Components.labelValue({ label: 'Probabilidad', value: `${negocio.probabilidad}%` })}
-                                    ${Components.labelValue({ label: 'Fecha de Cierre', value: Utils.formatDate(negocio.fechaCierre || new Date()) })}
-                                    ${Components.labelValue({ label: 'Propietario', value: negocio.responsable })}
-                                </div>
-                            </section>
-
-                            <section>
-                                <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <i data-lucide="landmark" class="w-3.5 h-3.5 text-amber-500"></i> Licitaciones Vinculadas
-                                </h4>
-                                ${(() => {
-                const vps = Store.filter('ventasPublicas', vp => vp.negocioId === id);
-                return vps.length > 0 ? vps.map(vp => `
-                                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 mb-2">
-                                            <div class="font-bold text-xs text-gray-800 mb-1">${vp.titulo}</div>
-                                            <div class="flex justify-between items-center text-[10px]">
-                                                <span class="text-gray-500">${vp.idPortal || vp.entidad}</span>
-                                                <span class="font-black text-blue-600">${Utils.formatCurrency(vp.monto)}</span>
-                                            </div>
-                                        </div>
-                                    `).join('') : '<p class="text-xs text-gray-400 italic">No hay licitaciones vinculadas</p>';
-            })()}
-                            </section>
-                        </div>
-                    </div>
-
-                    <!-- Right Main: Timeline/History -->
-                    <div class="col-span-8 flex flex-col p-8 bg-gray-50/30 overflow-y-auto custom-scrollbar relative">
-                        <!-- Interaction Bar -->
-                        <div class="flex gap-1 bg-white p-1 rounded-2xl shadow-sm mb-8 sticky top-0 z-20 w-fit mx-auto border border-gray-100">
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="phone" class="w-3.5 h-3.5"></i> Llamada
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="mail" class="w-3.5 h-3.5"></i> Correo
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="users" class="w-3.5 h-3.5"></i> Reunión
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nota
-                            </button>
-                        </div>
-
-                        <div id="negocio-history">
-                            ${renderHistory()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const { modal, close } = Components.modal({
-            title: 'Expediente del Negocio',
-            size: 'xl',
-            content: modalHTML
-        });
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-    },
+    /*
+        showNegocioDetail(id) {
+            // Commented out for debug
+        },
+    */
 
     renderNegocios(container) {
         const clientes = Store.get('clientes');

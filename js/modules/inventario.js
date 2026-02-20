@@ -42,7 +42,13 @@ const InventarioModule = {
         });
 
         content.querySelector('[data-action="export"]')?.addEventListener('click', () => {
-            alert('Exportando inventario...');
+            const productos = Store.get('productos') || [];
+            if (productos.length === 0) {
+                Components.toast('No hay datos para exportar', 'warning');
+                return;
+            }
+            Utils.downloadCSV(productos, `inventario_${new Date().toISOString().split('T')[0]}.csv`);
+            Components.toast('Exportando inventario a CSV...', 'success');
         });
 
         if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
@@ -73,6 +79,18 @@ const InventarioModule = {
         }
 
         if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        // Export event handlers (for configuracion tab)
+        document.querySelector('[data-action="export-json"]')?.addEventListener('click', () => {
+            const productos = Store.get('productos');
+            Utils.downloadJSON(productos, 'inventario_eax.json');
+            Components.toast('Inventario exportado como JSON', 'success');
+        });
+        document.querySelector('[data-action="export-csv"]')?.addEventListener('click', () => {
+            const productos = Store.get('productos');
+            Utils.downloadCSV(productos, 'inventario_eax.csv');
+            Components.toast('Inventario exportado como CSV', 'success');
+        });
     },
 
     renderDashboard(container) {
@@ -80,36 +98,50 @@ const InventarioModule = {
         const movimientos = Store.get('movimientos') || [];
 
         const totalProductos = productos.length;
-        const valorTotal = productos.reduce((sum, p) => sum + (p.precio * p.stock), 0);
-        const stockBajo = productos.filter(p => p.stock <= p.stockMinimo);
+        const valorTotal = productos.reduce((sum, p) => sum + (p.precioVenta || p.precio || 0) * (p.stock || 0), 0);
+        const stockBajo = productos.filter(p => p.stock <= (p.stockMinimo || 0));
         const movimientosHoy = movimientos.filter(m => m.fecha === new Date().toISOString().split('T')[0]).length;
 
+        // Automated Stock Alerts for Notification Centre
+        if (stockBajo.length > 0 && window.App) {
+            stockBajo.forEach(p => {
+                if (p.stock <= p.stockMinimo) {
+                    // This could be a real notification call
+                    // App.addNotification({ type: 'stock', message: `Stock bajo: ${p.nombre} (${p.stock} units left)`, productId: p.id });
+                }
+            });
+        }
+
         container.innerHTML = `
-            <div class="grid grid-cols-4 gap-6 mb-6">
+            <div class="quick-stats mb-6">
                 ${Components.statCard({
-            label: 'Total Productos',
+            label: 'Total SKUs',
             value: totalProductos,
             icon: 'package',
-            iconClass: 'primary'
+            iconClass: 'primary',
+            sparkline: [30, 45, 35, 50, 40, 60, 55] // Mock trend
         })}
                 ${Components.statCard({
-            label: 'Valor Inventario',
+            label: 'Valor Total',
             value: Utils.formatCurrency(valorTotal),
             icon: 'dollar-sign',
-            iconClass: 'success'
+            iconClass: 'success',
+            sparkline: [20, 30, 45, 40, 55, 70, 65]
         })}
                 ${Components.statCard({
-            label: 'Alertas Stock',
+            label: 'Alertas de Críticas',
             value: stockBajo.length,
             icon: 'alert-triangle',
-            iconClass: 'warning',
-            change: stockBajo.length > 0 ? -stockBajo.length : 0 // Just for visual change effect
+            iconClass: 'danger',
+            change: stockBajo.length > 0 ? stockBajo.length : 0,
+            changeType: 'danger'
         })}
                 ${Components.statCard({
-            label: 'Movimientos Hoy',
+            label: 'Movimientos (24h)',
             value: movimientosHoy,
-            icon: 'activity',
-            iconClass: 'info'
+            icon: 'arrow-left-right',
+            iconClass: 'accent',
+            sparkline: [10, 25, 15, 30, 20, 15, 25]
         })}
             </div>
 
@@ -197,36 +229,23 @@ const InventarioModule = {
         const container = document.getElementById('inventory-table-container');
         if (!container) return;
 
-        // Custom renderer for Stock column to show alerts
-        // We can pre-process the data to add a "stock_status" field for the badge.
         const processedData = productos.map(p => {
-            let status = 'success';
-            if (p.stock <= p.stockMinimo) status = 'danger';
-            else if (p.stock <= p.stockMinimo * 2) status = 'warning';
-
+            const isLow = p.stock <= (p.stockMinimo || 0);
             return {
                 ...p,
-                stock_label: p.stock, // We will use a badge type column but want the text to be the stock number? 
-                // Actually Components.dataTable badge type uses Utils.getStatusColor(value).
-                // Let's cheat a bit and create a specific status field for the badge color logic if we can, 
-                // but Components.js logic for 'badge' does `Utils.getStatusColor(value)`. 
-                // Utils.getStatusColor usually handles strings like 'Activo', 'Inactivo'.
-                // If I pass a number, it returns 'primary' probably. 
-                // So I'll modify the Component logic if needed, OR just stick to basic display.
-                // Let's try to map 'stock' to a string that Utils understands or just leave it.
-                // Actually, let's just use raw values and 'text' type for stock, and maybe a separate status column?
-                // Or I can add a dedicated status field.
-                estado: p.stock <= p.stockMinimo ? 'Bajo' : 'Normal'
+                barcode: `<span class="font-mono text-[10px] text-secondary">||| || | |||</span>`, // Visual placeholder
+                precioVenta: p.precioVenta || p.precio || 0,
+                estado: isLow ? 'Crítico' : 'Óptimo'
             };
         });
 
         container.innerHTML = Components.dataTable({
             columns: [
+                { key: 'barcode', label: 'BAR' },
                 { key: 'nombre', label: 'Producto' },
                 { key: 'sku', label: 'SKU' },
                 { key: 'categoria', label: 'Categoría' },
-                { key: 'ubicacion', label: 'Ubicación' },
-                { key: 'precio', label: 'Precio', type: 'currency' },
+                { key: 'precioVenta', label: 'Precio', type: 'currency' },
                 { key: 'stock', label: 'Stock' },
                 { key: 'estado', label: 'Estado', type: 'badge' }
             ],
@@ -276,16 +295,29 @@ const InventarioModule = {
         const productos = Store.get('productos') || [];
         const movimientos = Store.get('movimientos') || [];
 
+        // Calculate running balance for each product
+        const calculateRunningBalances = () => {
+            const balances = {};
+            return movimientos.map(m => {
+                if (!balances[m.producto]) balances[m.producto] = 0;
+                if (m.tipo === 'entrada') balances[m.producto] += m.cantidad;
+                else balances[m.producto] -= m.cantidad;
+                return { ...m, balance: balances[m.producto] };
+            });
+        };
+
+        const movimientosWithBalance = calculateRunningBalances();
+
         container.innerHTML = `
             <div class="grid grid-cols-3 gap-6">
                 <!-- Form -->
-                <div class="card h-fit">
+                <div class="card h-fit sticky top-6">
                     <div class="card-header">
                         <h3 class="card-title">Registrar Movimiento</h3>
                     </div>
                     <div class="card-body">
                         <form id="movement-form">
-                            <div class="form-group">
+                            <div class="form-group mb-4">
                                 <label class="form-label">Producto</label>
                                 <input type="text" list="products-list-mov" id="mov-product" class="form-input" placeholder="Buscar producto..." required>
                                 <datalist id="products-list-mov">
@@ -294,20 +326,20 @@ const InventarioModule = {
                             </div>
 
                             ${Components.formInput({
-            label: 'Tipo', name: 'tipo', type: 'select', required: true,
-            options: [{ value: 'entrada', label: 'Entrada' }, { value: 'salida', label: 'Salida' }]
+            label: 'Tipo de Operación', name: 'tipo', type: 'select', required: true,
+            options: [{ value: 'entrada', label: 'Entrada (+)' }, { value: 'salida', label: 'Salida (-)' }]
         })}
 
                             ${Components.formInput({
             label: 'Cantidad', name: 'cantidad', type: 'number', value: '1', required: true
         })}
 
-                           ${Components.formInput({
-            label: 'Referencia / Motivo', name: 'referencia', type: 'textarea'
+                            ${Components.formInput({
+            label: 'Documento / Referencia', name: 'referencia', type: 'textarea', placeholder: 'OC-123, Ajuste de auditoría...'
         })}
 
                             <button type="button" class="btn btn-primary w-full mt-4" id="btn-save-movement">
-                                <i data-lucide="save"></i> Registrar
+                                <i data-lucide="check-circle" style="width:16px;height:16px;margin-right:8px;"></i> Procesar Movimiento
                             </button>
                         </form>
                     </div>
@@ -315,19 +347,22 @@ const InventarioModule = {
 
                 <!-- History Table -->
                 <div class="card col-span-2">
-                    <div class="card-header">
-                        <h3 class="card-title">Historial de Movimientos</h3>
+                    <div class="card-header flex justify-between items-center">
+                        <h3 class="card-title">Libro de Movimientos</h3>
+                        <button class="btn btn-xs btn-outline" data-action="batch-edit">
+                            <i data-lucide="edit-3" style="width:12px;height:12px;margin-right:4px;"></i> Edición en Lote
+                        </button>
                     </div>
                     <div class="card-body p-0">
                          ${Components.dataTable({
             columns: [
-                { key: 'fecha', label: 'Fecha', type: 'date' },
+                { key: 'fecha', label: 'Fecha' },
                 { key: 'tipo', label: 'Tipo', type: 'badge' },
                 { key: 'producto', label: 'Producto' },
                 { key: 'cantidad', label: 'Cant.' },
-                { key: 'referencia', label: 'Ref.' }
+                { key: 'balance', label: 'Balance Final' }
             ],
-            data: movimientos.slice().reverse()
+            data: movimientosWithBalance.slice().reverse()
         })}
                     </div>
                 </div>
@@ -411,9 +446,14 @@ const InventarioModule = {
                     </div>
                     <div class="card-body">
                         <p class="text-sm text-secondary mb-4">Descarga una copia completa del inventario actual.</p>
-                        <button class="btn btn-outline" onclick="alert('Descargando backup...')">
-                            <i data-lucide="download"></i> Exportar JSON
-                        </button>
+                        <div class="flex gap-2">
+                            <button class="btn btn-outline" data-action="export-json">
+                                <i data-lucide="download"></i> Exportar JSON
+                            </button>
+                            <button class="btn btn-outline" data-action="export-csv">
+                                <i data-lucide="file-spreadsheet"></i> Exportar CSV
+                            </button>
+                        </div>
                     </div>
                 </div>
              </div>
@@ -462,10 +502,12 @@ const InventarioModule = {
             value: producto?.ubicacion,
             options: config.ubicaciones.map(u => ({ value: u, label: u }))
         })}
-                    ${Components.formInput({ label: 'Precio', name: 'precio', type: 'number', value: producto?.precio || 0, required: true })}
+                    ${Components.formInput({ label: 'Precio Compra', name: 'precioCompra', type: 'number', value: producto?.precioCompra || 0, required: true })}
+                    ${Components.formInput({ label: 'Precio Venta', name: 'precioVenta', type: 'number', value: producto?.precioVenta || producto?.precio || 0, required: true })}
                     ${Components.formInput({ label: 'Stock Actual', name: 'stock', type: 'number', value: producto?.stock || 0 })}
                     ${Components.formInput({ label: 'Stock Mínimo', name: 'stockMinimo', type: 'number', value: producto?.stockMinimo || config.stockMinimoDefault })}
                     ${Components.formInput({ label: 'Marca', name: 'marca', value: producto?.marca })}
+                    ${Components.formInput({ label: 'Modelo', name: 'modelo', value: producto?.modelo })}
                 </div>
             </form>
         `;
@@ -489,7 +531,9 @@ const InventarioModule = {
             const data = Object.fromEntries(formData.entries());
 
             // Parse numbers
-            data.precio = parseFloat(data.precio);
+            data.precioCompra = parseFloat(data.precioCompra) || 0;
+            data.precioVenta = parseFloat(data.precioVenta) || 0;
+            data.precio = data.precioVenta;
             data.stock = parseInt(data.stock);
             data.stockMinimo = parseInt(data.stockMinimo);
 
@@ -505,41 +549,88 @@ const InventarioModule = {
     showProductDetail(id) {
         const p = Store.find('productos', id);
         if (!p) return;
+        const compra = p.precioCompra || 0;
+        const venta = p.precioVenta || p.precio || 0;
+        const margen = compra > 0 ? Math.round(((venta - compra) / compra) * 100) : 0;
+        const stockStatus = p.stock <= (p.stockMinimo || 0) ? 'Bajo' : p.stock <= (p.stockMinimo || 0) * 2 ? 'Medio' : 'Normal';
+        const stockColor = stockStatus === 'Bajo' ? '#ef4444' : stockStatus === 'Medio' ? '#f59e0b' : '#10b981';
 
-        Components.modal({
+        const { modal, close } = Components.modal({
             title: 'Detalle de Producto',
-            size: 'sm',
+            size: 'md',
             content: `
                 <div class="flex flex-col gap-4">
-                    <div class="text-center mb-4">
-                        <div class="w-24 h-24 bg-gray-100 rounded-lg mx-auto flex items-center justify-center mb-2">
-                             <i data-lucide="package" style="width:40px;height:40px;color:#9ca3af;"></i>
+                    <div class="text-center mb-2">
+                        <div class="w-20 h-20 bg-gray-100 rounded-lg mx-auto flex items-center justify-center mb-2">
+                             <i data-lucide="package" style="width:36px;height:36px;color:#9ca3af;"></i>
                         </div>
-                        <h3 class="text-lg font-bold">${p.nombre}</h3>
-                        <p class="text-sm text-secondary">${p.sku}</p>
+                        <h3 class="text-lg font-bold">${p.nombreComercial || p.nombre}</h3>
+                        <p class="text-sm text-secondary">${p.sku} · ${p.marca || ''} ${p.modelo || ''}</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                            <span class="block text-xs text-secondary">Categoría</span>
+
+                    <div class="grid grid-cols-3 gap-3 text-sm">
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <span class="block text-xs text-secondary mb-1">Categoría</span>
                             <span class="font-medium">${p.categoria}</span>
                         </div>
-                        <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                             <span class="block text-xs text-secondary">Ubicación</span>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <span class="block text-xs text-secondary mb-1">Ubicación</span>
                             <span class="font-medium">${p.ubicacion}</span>
                         </div>
-                         <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                             <span class="block text-xs text-secondary">Precio</span>
-                            <span class="font-medium">${Utils.formatCurrency(p.precio)}</span>
-                        </div>
-                         <div class="p-3 bg-gray-50 rounded border border-gray-100">
-                             <span class="block text-xs text-secondary">Stock</span>
-                            <span class="font-medium ${p.stock <= p.stockMinimo ? 'text-red-600' : 'text-green-600'}">${p.stock}</span>
+                        <div class="p-3 rounded-lg border" style="background:${stockColor}10;border-color:${stockColor}30;">
+                            <span class="block text-xs text-secondary mb-1">Stock</span>
+                            <span class="font-bold" style="color:${stockColor};">${p.stock} <span class="font-normal text-xs">(mín: ${p.stockMinimo || 0})</span></span>
                         </div>
                     </div>
+
+                    <div class="p-4 rounded-lg" style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe);">
+                        <h4 class="text-xs text-secondary uppercase tracking-wider mb-3">Información Comercial</h4>
+                        <div class="grid grid-cols-3 gap-3 text-sm">
+                            <div>
+                                <span class="block text-xs text-secondary">P. Compra</span>
+                                <span class="font-medium">${compra > 0 ? Utils.formatCurrency(compra) : '—'}</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-secondary">P. Venta</span>
+                                <span class="font-bold">${Utils.formatCurrency(venta)}</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-secondary">Margen</span>
+                                <span class="font-bold" style="color:${margen >= 40 ? '#10b981' : margen >= 20 ? '#f59e0b' : '#ef4444'};">${compra > 0 ? margen + '%' : '—'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${p.familia || p.cicloVida ? `
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            ${p.familia ? `<div class="p-3 bg-gray-50 rounded-lg"><span class="block text-xs text-secondary mb-1">Familia</span><span class="font-medium">${p.familia}</span></div>` : ''}
+                            ${p.cicloVida ? `<div class="p-3 bg-gray-50 rounded-lg"><span class="block text-xs text-secondary mb-1">Ciclo de Vida</span><span class="badge badge-${p.cicloVida === 'Activo' ? 'success' : 'warning'}">${p.cicloVida}</span></div>` : ''}
+                        </div>
+                    ` : ''}
                 </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" data-action="close-modal">Cerrar</button>
+                <button class="btn btn-ghost" data-action="go-pim" title="Ver ficha completa en PIM">
+                    <i data-lucide="file-text" style="width:16px;height:16px;margin-right:4px;"></i> Ver en PIM
+                </button>
+                <button class="btn btn-ghost" data-action="go-comercial" title="Gestionar precios">
+                    <i data-lucide="dollar-sign" style="width:16px;height:16px;margin-right:4px;"></i> Ver en Comercial
+                </button>
             `
         });
         lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+        modal.querySelector('[data-action="close-modal"]')?.addEventListener('click', close);
+        modal.querySelector('[data-action="go-pim"]')?.addEventListener('click', () => {
+            close();
+            if (window.PIMModule) PIMModule.showProductView(id);
+        });
+        modal.querySelector('[data-action="go-comercial"]')?.addEventListener('click', () => {
+            close();
+            if (window.ComercialModule) {
+                ComercialModule.showEditPriceModal(p);
+            }
+        });
     },
 
     deleteProduct(id) {

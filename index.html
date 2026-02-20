@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+<!-- VERSION-UNIQUE-999 -->
 <html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EAX - Plataforma Empresarial Integral para gestión de negocios">
-    <title>EAX Platform</title>
+    <meta name="description" content="Aura - Plataforma Empresarial Integral para gestión de negocios">
+    <title>Aura Platform</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,17 +15,42 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- Lucide Icons -->
-    <script src="js/lucide.js"></script>
+
 
     <!-- Styles -->
-    <link rel="stylesheet" href="styles/design-system.css">
-    <link rel="stylesheet" href="styles/components.css">
-    <link rel="stylesheet" href="styles/layout.css">
-    <link rel="stylesheet" href="styles/modules.css">
+    <link rel="stylesheet" href="styles/design-system.css?v=1.0.2">
+    <link rel="stylesheet" href="styles/components.css?v=1.0.2">
+    <link rel="stylesheet" href="styles/layout.css?v=1.0.2">
+    <link rel="stylesheet" href="styles/modules.css?v=1.0.2">
 </head>
 
-<body>
+<body class="loading-state">
+    <!-- Splash Screen -->
+    <div id="splash-screen"
+        style="position:fixed; inset:0; background:#fff; z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; transition: opacity 0.5s ease;">
+        <div
+            style="width:120px; height:120px; background:linear-gradient(135deg, #60a5fa, #2563eb); border-radius:30px; display:flex; align-items:center; justify-content:center; color:white; box-shadow:0 20px 50px rgba(37, 99, 235, 0.3);">
+            <svg viewBox="0 0 24 24" width="60" height="60" stroke="currentColor" stroke-width="2" fill="none">
+                <path d="M12 2l9 4.5V17.5L12 22l-9-4.5V6.5L12 2z" />
+            </svg>
+        </div>
+        <div
+            style="font-family:'Outfit', sans-serif; font-size:24px; font-weight:700; color:#1e293b; letter-spacing:1px;">
+            AURA PLATFORM</div>
+        <div id="splash-status"
+            style="font-family:'Inter', sans-serif; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:2px;">
+            Cargando sistema...</div>
+        <div style="width:200px; height:4px; background:#f1f5f9; border-radius:10px; overflow:hidden;">
+            <div id="splash-progress" style="width:0%; height:100%; background:#3b82f6; transition:width 0.3s ease;">
+            </div>
+        </div>
+        <button id="bypass-splash"
+            style="margin-top:20px; padding:10px 20px; background:#f1f5f9; border-radius:10px; font-size:12px; display:none;">Forzar
+            entrada</button>
+    </div>
+
+
+
     <div id="app" class="app-container">
         <!-- Sidebar -->
         <aside id="sidebar" class="sidebar">
@@ -33,7 +59,7 @@
                     <div class="logo-icon">
                         <i data-lucide="hexagon"></i>
                     </div>
-                    <span class="logo-text">EAX</span>
+                    <span class="logo-text">Aura</span>
                 </div>
                 <button id="sidebar-toggle" class="sidebar-toggle">
                     <i data-lucide="panel-left-close"></i>
@@ -70,8 +96,14 @@
                         </li>
                         <li class="nav-item">
                             <a href="#/licitaciones" class="nav-link" data-module="licitaciones">
-                                <i data-lucide="file-text"></i>
-                                <span>Licitaciones</span>
+                                <i data-lucide="landmark"></i>
+                                <span>Ventas Públicas</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#/proveedores" class="nav-link" data-module="proveedores">
+                                <i data-lucide="truck"></i>
+                                <span>Proveedores</span>
                             </a>
                         </li>
                     </ul>
@@ -96,6 +128,12 @@
                             <a href="#/pim" class="nav-link" data-module="pim">
                                 <i data-lucide="database"></i>
                                 <span>PIM</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#/postventa" class="nav-link" data-module="postventa">
+                                <i data-lucide="life-buoy"></i>
+                                <span>Postventa</span>
                             </a>
                         </li>
                     </ul>
@@ -141,10 +179,10 @@
             <div class="sidebar-footer">
                 <div class="user-menu">
                     <div class="user-avatar">
-                        <span>EA</span>
+                        <span>AU</span>
                     </div>
                     <div class="user-info">
-                        <span class="user-name">EAX Admin</span>
+                        <span class="user-name">Aura Admin</span>
                         <span class="user-role">Administrador</span>
                     </div>
                     <button class="user-menu-btn">
@@ -188,10 +226,11 @@
 
             <!-- Page Content -->
             <div class="page-content" id="page-content">
-                <!-- Dynamic content loaded here -->
+                <!-- Data will be loaded here -->
             </div>
         </main>
     </div>
+
 
     <!-- Modal Container -->
     <div id="modal-container"></div>
@@ -200,12 +239,13 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script src="js/lucide.js"></script>
     <script src="js/store.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/components.js"></script>
     <script src="js/router.js"></script>
     <script src="js/modules/dashboard.js"></script>
-    <script src="js/modules/crm.js"></script>
+    <script src="js/modules/crm_stub_check.js"></script>
     <script src="js/modules/comercial.js"></script>
     <script src="js/modules/desarrollo.js"></script>
     <script src="js/modules/inventario.js"></script>
@@ -213,8 +253,10 @@
     <script src="js/modules/licitaciones.js"></script>
     <script src="js/modules/canvas.js"></script>
     <script src="js/modules/pim.js"></script>
+    <script src="js/modules/postventa.js"></script>
     <script src="js/modules/comunicaciones.js"></script>
     <script src="js/modules/intranet.js"></script>
+    <script src="js/modules/proveedores.js"></script>
     <script src="js/app.js"></script>
 </body>
 

@@ -269,6 +269,11 @@
     color: var(--color-error-600);
 }
 
+.stat-card .stat-icon.accent {
+    background: #ede9fe;
+    color: var(--color-accent-600);
+}
+
 .stat-card .stat-value {
     font-size: var(--font-size-3xl);
     font-weight: 700;
@@ -686,4 +691,9 @@
     align-items: center;
     justify-content: center;
     z-index: var(--z-modal);
+}
+
+/* Hover utilities */
+.hover\:bg-gray-50:hover {
+    background: var(--color-gray-50);
 }

@@ -8,6 +8,15 @@ const IntranetModule = {
         const empleados = Store.get('empleados');
         const anuncios = Store.get('anuncios');
 
+        // Initialize events if not exists
+        if (!Store.data.eventos) {
+            Store.data.eventos = [
+                { id: 1, titulo: 'Reunión de Equipo', fecha: new Date().toISOString().split('T')[0], hora: '15:00', tipo: 'meeting' },
+                { id: 2, titulo: 'Capacitación Seguridad', fecha: new Date(Date.now() + 86400000).toISOString().split('T')[0], hora: '10:00', tipo: 'training' },
+                { id: 3, titulo: 'Cierre Inventario', fecha: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0], hora: '18:00', tipo: 'deadline' }
+            ];
+        }
+
         content.innerHTML = `
             <div class="animate-fadeIn">
                 ${Components.pageHeader({
@@ -54,23 +63,43 @@ const IntranetModule = {
                         <div class="card">
                             <div class="card-header">
                                 <h3 class="card-title">Noticias y Anuncios</h3>
-                                <a href="#/comunicaciones" class="text-sm text-primary">Ver todos</a>
+                                <a href="#/comunicaciones" class="text-sm text-primary" style="font-weight:500;">Ver todos →</a>
                             </div>
-                            <div class="card-body">
-                                <div class="flex flex-col gap-4">
-                                    ${anuncios.map(a => `
-                                        <div class="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                                            <div class="avatar" style="background: var(--color-warning-100); color: var(--color-warning-600);">
-                                                <i data-lucide="megaphone" style="width:18px;height:18px;"></i>
-                                            </div>
-                                            <div class="flex-1">
-                                                <div class="font-medium">${a.titulo}</div>
-                                                <div class="text-sm text-secondary mt-1">${a.contenido}</div>
-                                                <div class="text-xs text-tertiary mt-2">${Utils.formatDate(a.fecha)} • ${a.autor}</div>
+                            <div class="card-body" style="display:flex;flex-direction:column;gap:16px;">
+                                ${anuncios.map((a, idx) => {
+            const typeMap = { urgente: { bg: '#fff1f2', color: '#f43f5e', label: '🚨 Urgente' }, logro: { bg: '#ecfdf5', color: '#059669', label: '🏆 Logro' }, general: { bg: '#eff6ff', color: '#3b82f6', label: '📢 Anuncio' } };
+            const tc = typeMap[a.tipo] || typeMap.general;
+            const reactions = a.reactions || { like: 0, celebrate: 0 };
+            return `
+                                        <div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff;">
+                                            <div style="height:3px;background:${tc.color};"></div>
+                                            <div style="padding:18px;">
+                                                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+                                                    <div>
+                                                        <span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:${tc.bg};color:${tc.color};display:inline-block;margin-bottom:6px;">${tc.label}</span>
+                                                        <div style="font-weight:700;font-size:15px;color:#0f172a;">${a.titulo}</div>
+                                                    </div>
+                                                    <span style="font-size:11px;color:#94a3b8;flex-shrink:0;">${Utils.formatDate(a.fecha)}</span>
+                                                </div>
+                                                <p style="color:#475569;font-size:14px;line-height:1.6;margin-bottom:14px;">${a.contenido}</p>
+                                                <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid #f1f5f9;">
+                                                    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;">
+                                                        <div style="width:24px;height:24px;border-radius:50%;background:#6d28d9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">${(a.autor || 'A').charAt(0)}</div>
+                                                        ${a.autor || 'EAX Admin'}
+                                                    </div>
+                                                    <div style="display:flex;gap:6px;">
+                                                        <button onclick="IntranetModule.reactPost(${idx},'like')" id="react-like-${idx}" style="border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;display:flex;align-items:center;gap:4px;transition:all 0.15s;">
+                                                            👍 <span id="like-count-${idx}">${reactions.like || 0}</span>
+                                                        </button>
+                                                        <button onclick="IntranetModule.reactPost(${idx},'celebrate')" id="react-celebrate-${idx}" style="border:1px solid #e2e8f0;background:#fff;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:12px;font-weight:500;color:#64748b;display:flex;align-items:center;gap:4px;transition:all 0.15s;">
+                                                            🎉 <span id="celebrate-count-${idx}">${reactions.celebrate || 0}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    `).join('')}
-                                </div>
+                                    `;
+        }).join('')}
                             </div>
                         </div>
                         
@@ -106,16 +135,7 @@ const IntranetModule = {
                             </div>
                             <div class="card-body">
                                 <div class="flex flex-col gap-3">
-                                    ${empleados.slice(0, 3).map(e => `
-                                        <div class="flex items-center gap-3">
-                                            <div class="avatar avatar-sm">${Utils.getInitials(e.nombre)}</div>
-                                            <div class="flex-1">
-                                                <div class="text-sm font-medium">${e.nombre}</div>
-                                                <div class="text-xs text-secondary">${e.departamento}</div>
-                                            </div>
-                                            <div class="text-xs text-secondary">${Math.floor(Math.random() * 28) + 1} Ene</div>
-                                        </div>
-                                    `).join('')}
+                                    ${this.renderBirthdays(empleados)}
                                 </div>
                             </div>
                         </div>
@@ -160,7 +180,7 @@ const IntranetModule = {
             { icon: 'calculator', label: 'Cotizar', color: 'warning', path: '/comercial' },
             { icon: 'package', label: 'Inventario', color: 'error', path: '/inventario' },
             { icon: 'user-cog', label: 'RRHH', color: 'secondary', path: '/rrhh' },
-            { icon: 'file-text', label: 'Licitaciones', color: 'primary', path: '/licitaciones' },
+            { icon: 'landmark', label: 'Ventas Públicas', color: 'primary', path: '/licitaciones' },
             { icon: 'layout-grid', label: 'Canvas', color: 'accent', path: '/canvas' },
             { icon: 'message-square', label: 'Chat', color: 'success', path: '/comunicaciones' }
         ];
@@ -196,7 +216,7 @@ const IntranetModule = {
         ];
 
         return docs.map(doc => `
-            <div class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+            <div class="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer doc-download" data-doc="${doc.name}" data-type="${doc.type}">
                 <div class="avatar avatar-sm" style="background: var(--color-error-100); color: var(--color-error-600);">
                     <i data-lucide="${doc.icon}" style="width:16px;height:16px;"></i>
                 </div>
@@ -210,30 +230,64 @@ const IntranetModule = {
     },
 
     renderEvents() {
-        const events = [
-            { title: 'Reunión de Equipo', date: 'Hoy, 15:00', type: 'meeting' },
-            { title: 'Capacitación Seguridad', date: 'Mañana, 10:00', type: 'training' },
-            { title: 'Cierre Inventario', date: '31 Ene, 18:00', type: 'deadline' }
-        ];
-
+        const eventos = Store.data.eventos || [];
         const icons = { meeting: 'video', training: 'graduation-cap', deadline: 'clock' };
         const colors = { meeting: 'primary', training: 'success', deadline: 'warning' };
 
+        const formatEventDate = (fecha, hora) => {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            if (fecha === today) return `Hoy, ${hora}`;
+            if (fecha === tomorrow) return `Mañana, ${hora}`;
+            return `${Utils.formatDate(fecha)}, ${hora}`;
+        };
+
         return `
             <div class="flex flex-col gap-3">
-                ${events.map(e => `
-                    <div class="flex items-center gap-3 p-3 bg-${colors[e.type]}-50 rounded-lg">
-                        <div class="avatar avatar-sm" style="background: var(--color-${colors[e.type]}-100); color: var(--color-${colors[e.type]}-600);">
-                            <i data-lucide="${icons[e.type]}" style="width:16px;height:16px;"></i>
+                ${eventos.map(e => `
+                    <div class="flex items-center gap-3 p-3 rounded-lg" style="background: var(--color-${colors[e.tipo] || 'primary'}-50);">
+                        <div class="avatar avatar-sm" style="background: var(--color-${colors[e.tipo] || 'primary'}-100); color: var(--color-${colors[e.tipo] || 'primary'}-600);">
+                            <i data-lucide="${icons[e.tipo] || 'calendar'}" style="width:16px;height:16px;"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm font-medium">${e.title}</div>
-                            <div class="text-xs text-secondary">${e.date}</div>
+                            <div class="text-sm font-medium">${e.titulo}</div>
+                            <div class="text-xs text-secondary">${formatEventDate(e.fecha, e.hora)}</div>
                         </div>
                     </div>
                 `).join('')}
             </div>
         `;
+    },
+
+    renderBirthdays(empleados) {
+        // Use deterministic dates based on employee ID instead of Math.random()
+        const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const currentMonth = new Date().getMonth();
+
+        return empleados.slice(0, 3).map((e, i) => {
+            const day = ((e.id * 7 + 3) % 28) + 1;
+            return `
+                <div class="flex items-center gap-3">
+                    <div class="avatar avatar-sm">${Utils.getInitials(e.nombre)}</div>
+                    <div class="flex-1">
+                        <div class="text-sm font-medium">${e.nombre}</div>
+                        <div class="text-xs text-secondary">${e.departamento}</div>
+                    </div>
+                    <div class="text-xs text-secondary">${day} ${monthNames[currentMonth]}</div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    reactPost(idx, type) {
+        const anuncios = Store.get('anuncios') || [];
+        if (!anuncios[idx]) return;
+        if (!anuncios[idx].reactions) anuncios[idx].reactions = { like: 0, celebrate: 0 };
+        anuncios[idx].reactions[type] = (anuncios[idx].reactions[type] || 0) + 1;
+        const countEl = document.getElementById(`${type}-count-${idx}`);
+        const btnEl = document.getElementById(`react-${type}-${idx}`);
+        if (countEl) countEl.textContent = anuncios[idx].reactions[type];
+        if (btnEl) { btnEl.style.borderColor = '#3b82f6'; btnEl.style.color = '#3b82f6'; }
     },
 
     attachEvents() {
@@ -257,6 +311,37 @@ const IntranetModule = {
                 </div>
             `).join('');
         }, 300));
+
+        // Document downloads
+        document.querySelectorAll('.doc-download').forEach(doc => {
+            doc.addEventListener('click', () => {
+                const docName = doc.dataset.doc;
+                const docType = doc.dataset.type;
+
+                Components.toast(`Generando "${docName}.${docType.toLowerCase()}"...`, 'info');
+
+                // Simulate real download by creating a blob
+                setTimeout(() => {
+                    let blob;
+                    if (docType === 'PDF') {
+                        blob = new Blob(['%PDF-1.4\n%... Fichero PDF EAX ficticio ...'], { type: 'application/pdf' });
+                    } else {
+                        blob = new Blob([''], { type: 'image/png' });
+                    }
+
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${docName.replace(/\s+/g, '_')}.${docType.toLowerCase()}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    Components.toast(`"${docName}.${docType.toLowerCase()}" descargado correctamente`, 'success');
+                }, 1000);
+            });
+        });
     }
 };
 

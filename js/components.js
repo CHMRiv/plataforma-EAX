@@ -52,16 +52,22 @@ const Components = {
 
         container.appendChild(backdrop);
         container.appendChild(modal);
+
         lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
 
         const close = () => {
             backdrop.remove();
             modal.remove();
+            document.removeEventListener('keydown', escHandler);
             if (onClose) onClose();
         };
 
-        backdrop.addEventListener('click', close);
+        // Escape key closes modal
+        const escHandler = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', escHandler);
+
         modal.querySelector('.modal-close').addEventListener('click', close);
+        backdrop.addEventListener('click', close);
 
         return { modal, close };
     },
@@ -244,22 +250,23 @@ const Components = {
     },
 
     // Form input
-    formInput({ label, name, type = 'text', value = '', placeholder = '', required = false, options = [] }) {
+    formInput({ label, name, type = 'text', value = '', placeholder = '', required = false, options = [], disabled = false }) {
         let input = '';
+        const disabledAttr = disabled ? 'disabled' : '';
 
         if (type === 'select') {
             input = `
-                <select class="form-select" name="${name}" id="${name}" ${required ? 'required' : ''}>
+                <select class="form-select" name="${name}" id="${name}" ${required ? 'required' : ''} ${disabledAttr}>
                     <option value="">Seleccionar...</option>
                     ${options.map(opt => `
-                        <option value="${opt.value}" ${opt.value === value ? 'selected' : ''}>${opt.label}</option>
+                        <option value="${opt.value}" ${opt.value == value ? 'selected' : ''}>${opt.label}</option>
                     `).join('')}
                 </select>
             `;
         } else if (type === 'textarea') {
-            input = `<textarea class="form-textarea" name="${name}" id="${name}" placeholder="${placeholder}" ${required ? 'required' : ''}>${value}</textarea>`;
+            input = `<textarea class="form-textarea" name="${name}" id="${name}" placeholder="${placeholder}" ${required ? 'required' : ''} ${disabledAttr}>${value}</textarea>`;
         } else {
-            input = `<input type="${type}" class="form-input" name="${name}" id="${name}" value="${value}" placeholder="${placeholder}" ${required ? 'required' : ''}>`;
+            input = `<input type="${type}" class="form-input" name="${name}" id="${name}" value="${value}" placeholder="${placeholder}" ${required ? 'required' : ''} ${disabledAttr}>`;
         }
 
         return `
@@ -338,6 +345,21 @@ const Components = {
                 ${footer ? `<div class="card-footer">${footer}</div>` : ''}
             </div>
         `;
+    },
+
+    // Label-Value pair (used in detail views)
+    labelValue({ label, value }) {
+        return `
+            <div class="label-value">
+                <div class="text-xs text-secondary uppercase tracking-wider mb-1">${label}</div>
+                <div class="font-medium">${value ?? '-'}</div>
+            </div>
+        `;
+    },
+
+    // Tooltip
+    tooltip(text, content) {
+        return `<span class="tooltip-trigger" title="${text}">${content}</span>`;
     }
 };
 

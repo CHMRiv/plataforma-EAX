@@ -79,7 +79,7 @@ const DesarrolloModule = {
                         <!-- View Tabs -->
                         <div class="flex items-center justify-between mb-4">
                             <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
-                                ${['kanban', 'lista', 'gantt', 'calendario'].map(view => `
+                                ${['kanban', 'lista', 'gantt', 'calendario', 'reportes'].map(view => `
                                     <button class="btn ${this.currentView === view ? 'btn-secondary' : 'btn-ghost'} btn-sm view-btn" data-view="${view}">
                                         <i data-lucide="${this.getViewIcon(view)}"></i>
                                         ${view.charAt(0).toUpperCase() + view.slice(1)}
@@ -114,7 +114,7 @@ const DesarrolloModule = {
     },
 
     getViewIcon(view) {
-        const icons = { kanban: 'columns', lista: 'list', gantt: 'bar-chart-2', calendario: 'calendar' };
+        const icons = { kanban: 'columns', lista: 'list', gantt: 'bar-chart-2', calendario: 'calendar', reportes: 'pie-chart' };
         return icons[view] || 'grid';
     },
 
@@ -171,7 +171,7 @@ const DesarrolloModule = {
                 if (nombre) {
                     const projectId = parseInt(btn.dataset.projectId);
                     const carpetas = Store.get('carpetas') || [];
-                    const newId = carpetas.length > 0 ? Math.max(...carpetas.map(c => c.id)) + 1 : 1;
+                    const newId = Store._nextId++;
                     carpetas.push({ id: newId, nombre, proyectoId: projectId });
                     Store.set('carpetas', carpetas);
                     this.render();
@@ -227,6 +227,8 @@ const DesarrolloModule = {
             this.renderGantt(container);
         } else if (this.currentView === 'calendario') {
             this.renderCalendario(container);
+        } else if (this.currentView === 'reportes') {
+            this.renderReportes(container);
         }
     },
 
@@ -478,7 +480,7 @@ const DesarrolloModule = {
                                             <div style="flex: 1; border-right: 1px solid #f8fafc; height: 100%;"></div>
                                         `).join('')}
                                         
-                                        <div style="position: absolute; top: 12px; height: 24px; left: ${leftPos}; width: ${widthPos}; background: ${statusColors[t.estado]}; border-radius: 4px; padding: 0 8px; display: flex; align-items: center; color: white; font-size: 0.75rem; overflow: hidden; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;" title="${t.titulo}">
+                                        <div data-task-id="${t.id}" style="position: absolute; top: 12px; height: 24px; left: ${leftPos}; width: ${widthPos}; background: ${statusColors[t.estado]}; border-radius: 4px; padding: 0 8px; display: flex; align-items: center; color: white; font-size: 0.75rem; overflow: hidden; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;" title="${t.titulo}">
                                             ${width > 1 ? t.prioridad : ''}
                                         </div>
                                     </div>
@@ -490,11 +492,20 @@ const DesarrolloModule = {
             </div>
         `;
         lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        // Click Gantt bars to edit task
+        container.querySelectorAll('[data-task-id]').forEach(el => {
+            el.addEventListener('click', () => {
+                this.showTaskForm(parseInt(el.dataset.taskId));
+            });
+        });
     },
 
     renderCalendario(container) {
         const tareas = this.getTasks();
-        const date = new Date();
+        if (!this.calendarState) this.calendarState = { offset: 0 };
+        const today = new Date();
+        const date = new Date(today.getFullYear(), today.getMonth() + this.calendarState.offset, 1);
         const year = date.getFullYear();
         const month = date.getMonth();
 
@@ -513,7 +524,7 @@ const DesarrolloModule = {
 
         for (let i = 1; i <= daysInMonth; i++) {
             const currentDate = new Date(year, month, i);
-            const isToday = i === date.getDate();
+            const isToday = currentDate.toDateString() === today.toDateString();
 
             const dayTasks = tareas.filter(t => {
                 if (!t.fechaInicio) return false;
@@ -540,7 +551,7 @@ const DesarrolloModule = {
                 };
                 const c = colors[t.estado] || colors['todo'];
                 return `
-                                <div style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: ${c.bg}; color: ${c.text}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="${t.titulo}">
+                                <div data-task-id="${t.id}" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: ${c.bg}; color: ${c.text}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="${t.titulo}">
                                     ${t.titulo}
                                 </div>
                             `;
@@ -556,12 +567,13 @@ const DesarrolloModule = {
                     <div style="display: flex; align-items: center; gap: 16px;">
                         <h3 style="font-weight: bold; font-size: 1.25rem;">${monthNames[month]} <span style="font-weight: normal; color: #94a3b8;">${year}</span></h3>
                         <div style="display: flex; gap: 4px;">
-                            <button class="btn btn-icon btn-sm btn-ghost"><i data-lucide="chevron-left"></i></button>
-                            <button class="btn btn-icon btn-sm btn-ghost"><i data-lucide="chevron-right"></i></button>
+                            <button class="btn btn-icon btn-sm btn-ghost" id="dev-cal-prev"><i data-lucide="chevron-left"></i></button>
+                            <button class="btn btn-sm btn-ghost" id="dev-cal-today" style="border:1px solid #eee;">Hoy</button>
+                            <button class="btn btn-icon btn-sm btn-ghost" id="dev-cal-next"><i data-lucide="chevron-right"></i></button>
                         </div>
                     </div>
-                    <button class="btn btn-primary btn-sm">
-                        <i data-lucide="plus"></i> Evento
+                    <button class="btn btn-primary btn-sm" data-action="add-task" data-status="todo">
+                        <i data-lucide="plus"></i> Nueva Tarea
                     </button>
                 </div>
                  <div style="display: grid; grid-template-columns: repeat(7, 1fr); background: #f8fafc; border-bottom: 1px solid #eee;">
@@ -576,6 +588,33 @@ const DesarrolloModule = {
             </div>
         `;
         lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        // Calendar navigation
+        document.getElementById('dev-cal-prev')?.addEventListener('click', () => {
+            this.calendarState.offset--;
+            this.renderView();
+        });
+        document.getElementById('dev-cal-next')?.addEventListener('click', () => {
+            this.calendarState.offset++;
+            this.renderView();
+        });
+        document.getElementById('dev-cal-today')?.addEventListener('click', () => {
+            this.calendarState.offset = 0;
+            this.renderView();
+        });
+
+        // Task click in calendar opens edit
+        container.querySelectorAll('[data-task-id]').forEach(el => {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', () => {
+                this.showTaskForm(parseInt(el.dataset.taskId));
+            });
+        });
+
+        // Add task from calendar
+        container.querySelector('[data-action="add-task"]')?.addEventListener('click', () => {
+            this.showTaskForm(null, { estado: 'todo' });
+        });
     },
 
     showTaskForm(id = null, defaults = {}) {
@@ -694,6 +733,277 @@ const DesarrolloModule = {
             Components.toast('Proyecto creado', 'success');
             close();
             this.render();
+        });
+    },
+
+    renderReportes(container) {
+        const allTareas = Store.get('tareas') || [];
+        const tareas = this.getTasks();
+        const proyectos = Store.get('proyectos') || [];
+        const today = new Date();
+
+        // Stats
+        const total = tareas.length;
+        const done = tareas.filter(t => t.estado === 'done').length;
+        const inProgress = tareas.filter(t => t.estado === 'in-progress').length;
+        const todo = tareas.filter(t => t.estado === 'todo').length;
+        const review = tareas.filter(t => t.estado === 'review').length;
+        const overdue = tareas.filter(t => t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today).length;
+        const alta = tareas.filter(t => t.prioridad === 'alta').length;
+        const media = tareas.filter(t => t.prioridad === 'media').length;
+        const baja = tareas.filter(t => t.prioridad === 'baja').length;
+        const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+
+        // Workload by assignee
+        const workload = {};
+        tareas.forEach(t => {
+            if (!t.asignado) return;
+            if (!workload[t.asignado]) workload[t.asignado] = { total: 0, done: 0, pending: 0, overdue: 0 };
+            workload[t.asignado].total++;
+            if (t.estado === 'done') workload[t.asignado].done++;
+            else workload[t.asignado].pending++;
+            if (t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today) workload[t.asignado].overdue++;
+        });
+
+        container.innerHTML = `
+            <div class="animate-fadeIn">
+                <!-- KPI Summary -->
+                <div class="grid grid-cols-5 gap-4 mb-6">
+                    ${Components.statCard({ icon: 'clipboard-list', label: 'Total Tareas', value: total, iconClass: 'primary' })}
+                    ${Components.statCard({ icon: 'check-circle', label: 'Completadas', value: done, iconClass: 'success' })}
+                    ${Components.statCard({ icon: 'loader', label: 'En Progreso', value: inProgress, iconClass: 'warning' })}
+                    ${Components.statCard({ icon: 'alert-circle', label: 'Vencidas', value: overdue, iconClass: 'error' })}
+                    ${Components.statCard({ icon: 'target', label: 'Tasa Completitud', value: completionRate + '%', iconClass: 'success' })}
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <!-- Distribution by Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Distribución por Estado</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex flex-col gap-4">
+                                ${[
+                { label: 'Por Hacer', count: todo, color: '#94a3b8', percent: total ? (todo / total * 100) : 0 },
+                { label: 'En Progreso', count: inProgress, color: '#3b82f6', percent: total ? (inProgress / total * 100) : 0 },
+                { label: 'En Revisión', count: review, color: '#f59e0b', percent: total ? (review / total * 100) : 0 },
+                { label: 'Completado', count: done, color: '#10b981', percent: total ? (done / total * 100) : 0 }
+            ].map(s => `
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <div class="flex items-center gap-2">
+                                                <span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;"></span>
+                                                <span class="text-sm font-medium">${s.label}</span>
+                                            </div>
+                                            <span class="text-sm text-secondary">${s.count} (${Math.round(s.percent)}%)</span>
+                                        </div>
+                                        <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
+                                            <div style="height:100%;width:${s.percent}%;background:${s.color};border-radius:4px;transition:width 0.5s ease;"></div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <!-- Visual bar chart -->
+                            <div class="flex items-end gap-3 mt-6" style="height:120px;">
+                                ${[
+                { label: 'Todo', count: todo, color: '#94a3b8' },
+                { label: 'Prog.', count: inProgress, color: '#3b82f6' },
+                { label: 'Rev.', count: review, color: '#f59e0b' },
+                { label: 'Done', count: done, color: '#10b981' }
+            ].map(s => {
+                const maxCount = Math.max(todo, inProgress, review, done, 1);
+                const h = Math.max(8, (s.count / maxCount) * 100);
+                return `
+                                        <div class="flex-1 flex flex-col items-center gap-1">
+                                            <span class="text-xs font-bold">${s.count}</span>
+                                            <div style="width:100%;height:${h}px;background:${s.color};border-radius:6px 6px 0 0;transition:height 0.5s ease;"></div>
+                                            <span class="text-xs text-secondary">${s.label}</span>
+                                        </div>
+                                    `;
+            }).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Priority Breakdown -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Distribución por Prioridad</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex flex-col gap-4">
+                                ${[
+                { label: 'Alta', count: alta, color: '#ef4444', percent: total ? (alta / total * 100) : 0 },
+                { label: 'Media', count: media, color: '#f59e0b', percent: total ? (media / total * 100) : 0 },
+                { label: 'Baja', count: baja, color: '#10b981', percent: total ? (baja / total * 100) : 0 }
+            ].map(s => `
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <div class="flex items-center gap-2">
+                                                <span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;"></span>
+                                                <span class="text-sm font-medium">${s.label}</span>
+                                            </div>
+                                            <span class="text-sm text-secondary">${s.count} (${Math.round(s.percent)}%)</span>
+                                        </div>
+                                        <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
+                                            <div style="height:100%;width:${s.percent}%;background:${s.color};border-radius:4px;transition:width 0.5s ease;"></div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <!-- Donut-style visual -->
+                            <div class="flex items-center justify-center mt-6">
+                                <div style="position:relative;width:140px;height:140px;">
+                                    <svg viewBox="0 0 36 36" style="width:140px;height:140px;transform:rotate(-90deg);">
+                                        <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="3"></circle>
+                                        ${(() => {
+                let offset = 0;
+                const segments = [
+                    { percent: total ? (alta / total * 100) : 0, color: '#ef4444' },
+                    { percent: total ? (media / total * 100) : 0, color: '#f59e0b' },
+                    { percent: total ? (baja / total * 100) : 0, color: '#10b981' }
+                ];
+                return segments.map(s => {
+                    const dashArray = `${s.percent} ${100 - s.percent}`;
+                    const dashOffset = -offset;
+                    offset += s.percent;
+                    return `<circle cx="18" cy="18" r="15.9155" fill="none" stroke="${s.color}" stroke-width="3" stroke-dasharray="${dashArray}" stroke-dashoffset="${dashOffset}"></circle>`;
+                }).join('');
+            })()}
+                                    </svg>
+                                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+                                        <div class="text-2xl font-bold">${total}</div>
+                                        <div class="text-xs text-secondary">Total</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <!-- Project Progress -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Progreso por Proyecto</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex flex-col gap-5">
+                                ${proyectos.map(p => {
+                const projectTasks = allTareas.filter(t => t.proyectoId === p.id);
+                const projectDone = projectTasks.filter(t => t.estado === 'done').length;
+                const projectTotal = projectTasks.length;
+                const projectPercent = projectTotal > 0 ? Math.round((projectDone / projectTotal) * 100) : 0;
+                return `
+                                        <div>
+                                            <div class="flex justify-between items-center mb-2">
+                                                <div>
+                                                    <div class="font-medium text-sm">${p.nombre}</div>
+                                                    <div class="text-xs text-secondary">${projectDone}/${projectTotal} tareas completadas</div>
+                                                </div>
+                                                <span class="text-sm font-bold" style="color: ${projectPercent >= 70 ? '#10b981' : projectPercent >= 40 ? '#f59e0b' : '#94a3b8'}">${projectPercent}%</span>
+                                            </div>
+                                            <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;">
+                                                <div style="height:100%;width:${projectPercent}%;background:${projectPercent >= 70 ? '#10b981' : projectPercent >= 40 ? '#f59e0b' : '#3b82f6'};border-radius:3px;transition:width 0.5s ease;"></div>
+                                            </div>
+                                        </div>
+                                    `;
+            }).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Workload -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Carga por Miembro</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex flex-col gap-3">
+                                ${Object.entries(workload).map(([name, data]) => {
+                const completionPct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
+                return `
+                                        <div class="flex items-center gap-3 p-3 rounded-lg" style="background: ${data.overdue > 0 ? 'var(--color-error-50)' : 'var(--color-gray-50)'}">
+                                            <div class="avatar avatar-sm">${Utils.getInitials(name)}</div>
+                                            <div class="flex-1">
+                                                <div class="flex justify-between">
+                                                    <span class="text-sm font-medium">${name}</span>
+                                                    <span class="text-xs text-secondary">${data.done}/${data.total} hechas</span>
+                                                </div>
+                                                <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;">
+                                                    <div style="height:100%;width:${completionPct}%;background:${completionPct >= 70 ? '#10b981' : '#3b82f6'};border-radius:2px;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                ${data.pending > 0 ? `<span class="badge badge-warning" style="font-size:11px;">${data.pending} pend.</span>` : ''}
+                                                ${data.overdue > 0 ? `<span class="badge badge-error" style="font-size:11px;">${data.overdue} vencida${data.overdue > 1 ? 's' : ''}</span>` : ''}
+                                            </div>
+                                        </div>
+                                    `;
+            }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Overdue Tasks Table -->
+                ${overdue > 0 ? `
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title" style="color: var(--color-error-600);"><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;margin-right:4px;"></i> Tareas Vencidas (${overdue})</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tarea</th>
+                                        <th>Proyecto</th>
+                                        <th>Asignado</th>
+                                        <th>Vencimiento</th>
+                                        <th>Prioridad</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tareas.filter(t => t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today).map(t => `
+                                        <tr class="cursor-pointer hover:bg-gray-50" data-task-id="${t.id}">
+                                            <td class="font-medium">${t.titulo}</td>
+                                            <td>${t.proyecto}</td>
+                                            <td>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="avatar avatar-sm" style="width:24px;height:24px;font-size:10px;">${Utils.getInitials(t.asignado)}</div>
+                                                    ${t.asignado}
+                                                </div>
+                                            </td>
+                                            <td style="color: var(--color-error-600);">${Utils.formatDate(t.fechaVencimiento)}</td>
+                                            <td><span class="badge badge-${t.prioridad === 'alta' ? 'error' : t.prioridad === 'media' ? 'warning' : 'success'}">${t.prioridad}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ` : `
+                    <div class="card">
+                        <div class="card-body text-center py-8">
+                            <i data-lucide="check-circle" style="width:48px;height:48px;color:var(--color-success-400);margin:0 auto 12px;display:block;"></i>
+                            <h3 class="font-semibold text-success-600">¡Sin tareas vencidas!</h3>
+                            <p class="text-secondary">Todas las tareas están al día.</p>
+                        </div>
+                    </div>
+                `}
+            </div>
+        `;
+
+        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+        // Click on overdue task rows
+        container.querySelectorAll('[data-task-id]').forEach(row => {
+            row.addEventListener('click', () => {
+                this.showTaskForm(parseInt(row.dataset.taskId));
+            });
         });
     }
 };

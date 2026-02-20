@@ -2,6 +2,8 @@
    Aura Platform - CRM Module
    ========================================================================== */
 
+console.log('CRMModule: Script crm.js cargando...');
+
 const CRMModule = {
     currentTab: 'clientes',
 

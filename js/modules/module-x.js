@@ -1,8 +1,10 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    Aura Platform - CRM Module
    ========================================================================== */
 
-const CRMModule = {
+console.log('CRMModule: Script crm.js cargando...');
+
+var CRMModule = window.CRMModule = {
     currentTab: 'clientes',
 
     render() {
@@ -719,7 +721,7 @@ const CRMModule = {
                             <div class="flex items-center gap-2">
                                 <i data-lucide="briefcase" class="w-4 h-4 text-primary-500"></i>
                                 <select class="bg-transparent border-none text-sm font-bold text-gray-900 focus:ring-0 cursor-pointer p-0" id="link-negocio-msg">
-                                    <option value="">— Sin vincular —</option>
+                                    <option value="">- Sin vincular -</option>
                                     ${negocios.map(n => `<option value="${n.id}" ${n.id === msg.negocioId ? 'selected' : ''}>${n.titulo}</option>`).join('')}
                                 </select>
                             </div>
@@ -1404,7 +1406,7 @@ const CRMModule = {
             name: 'negocio_selector',
             type: 'select',
             value: preOportunidadId,
-            options: [{ value: '', label: '— Sin vincular —' }, ...clienteOpps.map(o => ({ value: o.id, label: o.titulo }))]
+            options: [{ value: '', label: '- Sin vincular -' }, ...clienteOpps.map(o => ({ value: o.id, label: o.titulo }))]
         })}
                 </div>
                 ${Components.formInput({
@@ -1413,7 +1415,7 @@ const CRMModule = {
             type: 'select',
             required: true,
             value: preResponsable,
-            options: empleados.map(e => ({ value: e.nombre, label: `${e.nombre} — ${e.cargo}` }))
+            options: empleados.map(e => ({ value: e.nombre, label: `${e.nombre} - ${e.cargo}` }))
         })}
                 <div class="grid grid-cols-2 gap-4">
                     ${Components.formInput({ label: 'Fecha', name: 'fecha', type: 'date', value: actividad?.fecha || new Date().toISOString().split('T')[0], required: true })}
@@ -1469,7 +1471,7 @@ const CRMModule = {
             clienteSelect.addEventListener('change', () => {
                 const selectedCliente = clienteSelect.value;
                 const filteredOpps = oportunidades.filter(o => o.cliente === selectedCliente);
-                negocioSelect.innerHTML = `<option value="">— Sin vincular —</option>` +
+                negocioSelect.innerHTML = `<option value="">- Sin vincular -</option>` +
                     filteredOpps.map(o => `<option value="${o.id}">${o.titulo}</option>`).join('');
                 negocioSelect.value = '';
                 if (hiddenOppId) hiddenOppId.value = '';

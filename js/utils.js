@@ -170,8 +170,15 @@ const Utils = {
             'perdida': 'error',
             'rechazada': 'error',
             'cancelada': 'error',
+            'caducada': 'error',
             'traslado': 'info',
-            'transferencia': 'info'
+            'transferencia': 'info',
+            'abierto': 'info',
+            'vigente': 'success',
+            'cerrado': 'secondary',
+            'alto': 'error',
+            'medio': 'warning',
+            'bajo': 'success'
         };
         return colors[status.toLowerCase()] || 'secondary';
     },
@@ -189,42 +196,6 @@ const Utils = {
         return colors[priority.toLowerCase()] || 'secondary';
     },
 
-    // Download as JSON
-    downloadJSON(data, filename) {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
-
-    // Download as CSV
-    downloadCSV(data, filename) {
-        if (data.length === 0) return;
-
-        const headers = Object.keys(data[0]);
-        const csv = [
-            headers.join(','),
-            ...data.map(row =>
-                headers.map(header => {
-                    const value = row[header];
-                    return typeof value === 'string' && value.includes(',')
-                        ? `"${value}"`
-                        : value;
-                }).join(',')
-            )
-        ].join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-    },
 
     // Local storage helpers
     storage: {
@@ -272,6 +243,49 @@ const Utils = {
             });
             return el;
         }
+    },
+
+    // Escape HTML to prevent XSS
+    escapeHtml(str) {
+        if (str == null) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    },
+
+    // Pluralize helper
+    pluralize(count, singular, plural) {
+        return count === 1 ? `${count} ${singular}` : `${count} ${plural || singular + 's'}`;
+    },
+
+    // Download data as JSON file
+    downloadJSON(data, filename) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    },
+
+    // Download data as CSV file
+    downloadCSV(data, filename) {
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]);
+        const rows = data.map(item => headers.map(h => {
+            const val = item[h];
+            const str = val == null ? '' : String(val);
+            return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+        }).join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 };
 

@@ -1,6 +1,8 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    Aura Platform - CRM Module
    ========================================================================== */
+
+console.log('CRMModule: Script crm.js cargando...');
 
 const CRMModule = {
     currentTab: 'clientes',
@@ -9,7 +11,7 @@ const CRMModule = {
         console.log('CRMModule: Invocando render...');
         const content = document.getElementById('page-content');
         if (!content) {
-            console.error('CRMModule: No se encontró el contenedor page-content');
+            console.error('CRMModule: No se encontrÃ³ el contenedor page-content');
             return;
         }
 
@@ -17,7 +19,7 @@ const CRMModule = {
             <div class="animate-fadeIn">
                 ${Components.pageHeader({
             title: 'CRM',
-            subtitle: 'Gestión de clientes y negocios comerciales',
+            subtitle: 'GestiÃ³n de clientes y negocios comerciales',
             actions: [
                 { label: 'Exportar', icon: 'download', class: 'btn-outline', action: 'export' },
                 { label: 'Nuevo Cliente', icon: 'plus', class: 'btn-primary', action: 'new-cliente' }
@@ -111,7 +113,7 @@ const CRMModule = {
                 { key: 'email', label: 'Email' },
                 { key: 'estado', label: 'Estado', type: 'badge' },
                 { key: 'oportunidades', label: 'Negocios' },
-                { key: 'valor', label: 'Valor Histórico', type: 'currency' }
+                { key: 'valor', label: 'Valor HistÃ³rico', type: 'currency' }
             ],
             data: clientes,
             actions: [
@@ -154,7 +156,7 @@ const CRMModule = {
             btn.addEventListener('click', async () => {
                 const confirmed = await Components.confirm({
                     title: 'Eliminar Cliente',
-                    message: '¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.',
+                    message: 'Â¿EstÃ¡s seguro de que deseas eliminar este cliente? Esta acciÃ³n no se puede deshacer.',
                     confirmText: 'Eliminar',
                     type: 'danger'
                 });
@@ -196,7 +198,7 @@ const CRMModule = {
                 { key: 'email', label: 'Email' },
                 { key: 'estado', label: 'Estado', type: 'badge' },
                 { key: 'oportunidades', label: 'Negocios' },
-                { key: 'valor', label: 'Valor Histórico', type: 'currency' }
+                { key: 'valor', label: 'Valor HistÃ³rico', type: 'currency' }
             ],
             data: clientes,
             actions: [
@@ -226,10 +228,10 @@ const CRMModule = {
             type: 'select',
             value: cliente?.sector || '',
             options: [
-                { value: 'Minería', label: 'Minería' },
+                { value: 'MinerÃ­a', label: 'MinerÃ­a' },
                 { value: 'Manufactura', label: 'Manufactura' },
-                { value: 'Construcción', label: 'Construcción' },
-                { value: 'Tecnología', label: 'Tecnología' },
+                { value: 'ConstrucciÃ³n', label: 'ConstrucciÃ³n' },
+                { value: 'TecnologÃ­a', label: 'TecnologÃ­a' },
                 { value: 'Agricultura', label: 'Agricultura' },
                 { value: 'Otro', label: 'Otro' }
             ]
@@ -247,7 +249,7 @@ const CRMModule = {
         })}
                     ${Components.formInput({ label: 'Contacto Principal', name: 'contacto', value: cliente?.contacto || '', required: true })}
                     ${Components.formInput({ label: 'Email', name: 'email', type: 'email', value: cliente?.email || '', required: true })}
-                    ${Components.formInput({ label: 'Teléfono', name: 'telefono', value: cliente?.telefono || '' })}
+                    ${Components.formInput({ label: 'TelÃ©fono', name: 'telefono', value: cliente?.telefono || '' })}
                 </div>
             </form>
         `;
@@ -320,7 +322,7 @@ const CRMModule = {
                                     <span class="badge badge-${Utils.getStatusColor(cliente.estado)}">${cliente.estado}</span>
                                 </div>
                                 <div class="p-4 bg-primary-50 rounded-xl border border-primary-100">
-                                    <div class="text-[10px] uppercase font-bold text-primary-400 mb-1">Valor Histórico</div>
+                                    <div class="text-[10px] uppercase font-bold text-primary-400 mb-1">Valor HistÃ³rico</div>
                                     <div class="font-bold text-primary-700">${Utils.formatCurrency(cliente.valor)}</div>
                                 </div>
                             </div>
@@ -387,7 +389,7 @@ const CRMModule = {
                                         </div>
                                         <div class="flex-1">
                                             <div class="font-bold text-gray-900">${op.titulo}</div>
-                                            <div class="text-xs text-gray-500">${Utils.formatDate(op.fechaCierre || new Date())} • Responsable: ${op.responsable}</div>
+                                            <div class="text-xs text-gray-500">${Utils.formatDate(op.fechaCierre || new Date())} â€¢ Responsable: ${op.responsable}</div>
                                         </div>
                                         <div class="text-right">
                                             <div class="font-black text-gray-900">${Utils.formatCurrency(op.valor)}</div>
@@ -406,16 +408,16 @@ const CRMModule = {
                     });
                     return `
                         <div>
-                            <h4 class="font-bold text-gray-800 mb-6">Ventas Públicas Vinculadas (Licitaciones/CA)</h4>
+                            <h4 class="font-bold text-gray-800 mb-6">Ventas PÃºblicas Vinculadas (Licitaciones/CA)</h4>
                             <div class="grid grid-cols-1 gap-3">
                                 ${vps.length > 0 ? vps.map(vp => `
                                     <div class="flex items-center gap-4 p-4 border border-gray-100 rounded-2xl hover:border-amber-200 transition-all bg-white shadow-sm">
-                                        <div class="w-12 h-12 rounded-xl ${vp.modalidad === 'Compra Ágil' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center">
-                                            <i data-lucide="${vp.modalidad === 'Compra Ágil' ? 'zap' : 'landmark'}"></i>
+                                        <div class="w-12 h-12 rounded-xl ${vp.modalidad === 'Compra Ãgil' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center">
+                                            <i data-lucide="${vp.modalidad === 'Compra Ãgil' ? 'zap' : 'landmark'}"></i>
                                         </div>
                                         <div class="flex-1">
                                             <div class="font-bold text-gray-900">${vp.titulo}</div>
-                                            <div class="text-xs text-gray-500">${vp.modalidad} • ${vp.entidad} • ${vp.idPortal || 'N/A'}</div>
+                                            <div class="text-xs text-gray-500">${vp.modalidad} â€¢ ${vp.entidad} â€¢ ${vp.idPortal || 'N/A'}</div>
                                         </div>
                                         <div class="text-right">
                                             <div class="font-black text-gray-900">${Utils.formatCurrency(vp.monto)}</div>
@@ -481,13 +483,13 @@ const CRMModule = {
                 <!-- Tabs -->
                 <div class="flex gap-1 bg-gray-100 p-1.5 rounded-2xl mb-8 w-fit mx-auto">
                     <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn active" data-tab="info">
-                        Información General
+                        InformaciÃ³n General
                     </button>
                     <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="negocios">
                         Negocios
                     </button>
                     <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="ventas">
-                        Ventas Públicas
+                        Ventas PÃºblicas
                     </button>
                     <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="tickets">
                         Postventa
@@ -557,7 +559,7 @@ const CRMModule = {
                         ${Components.formInput({ label: 'Nombre Completo', name: 'nombre', required: true })}
                         ${Components.formInput({ label: 'Cargo', name: 'cargo' })}
                         ${Components.formInput({ label: 'Email', name: 'email', type: 'email', required: true })}
-                        ${Components.formInput({ label: 'Teléfono', name: 'telefono' })}
+                        ${Components.formInput({ label: 'TelÃ©fono', name: 'telefono' })}
                     </form>
                 `,
                 footer: `
@@ -581,7 +583,7 @@ const CRMModule = {
                 Store.update('clientes', clientId, { contactos: cliente.contactos });
 
                 cClose();
-                Components.toast('Contacto agregado con éxito', 'success');
+                Components.toast('Contacto agregado con Ã©xito', 'success');
                 // Refresh content if still on info tab
                 if (currentTab === 'info') {
                     modal.querySelector('#detail-tab-content').innerHTML = renderContent('info');
@@ -596,7 +598,7 @@ const CRMModule = {
             btn.onclick = async () => {
                 const confirmed = await Components.confirm({
                     title: 'Eliminar Contacto',
-                    message: '¿Está seguro de eliminar este contacto de la empresa?'
+                    message: 'Â¿EstÃ¡ seguro de eliminar este contacto de la empresa?'
                 });
                 if (confirmed) {
                     const cid = parseInt(btn.dataset.cid);
@@ -656,8 +658,8 @@ const CRMModule = {
                         <div class="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center mb-6">
                             <i data-lucide="mail-open" class="w-10 h-10 opacity-20"></i>
                         </div>
-                        <h4 class="text-lg font-bold text-gray-900 mb-2">Selecciona una comunicación</h4>
-                        <p class="text-sm max-w-xs">Haz clic en un mensaje de la lista para ver el historial completo y gestionar la asociación.</p>
+                        <h4 class="text-lg font-bold text-gray-900 mb-2">Selecciona una comunicaciÃ³n</h4>
+                        <p class="text-sm max-w-xs">Haz clic en un mensaje de la lista para ver el historial completo y gestionar la asociaciÃ³n.</p>
                     </div>
                 </div>
             </div>
@@ -699,7 +701,7 @@ const CRMModule = {
                                 </div>
                                 <div>
                                     <div class="text-sm font-bold text-gray-800">${msg.de} <span class="text-xs text-gray-400 font-normal">&lt;${msg.email}&gt;</span></div>
-                                    <div class="text-[10px] text-gray-400 font-bold uppercase">${Utils.formatDate(msg.fecha)} • ${msg.fecha.split(' ')[1]}</div>
+                                    <div class="text-[10px] text-gray-400 font-bold uppercase">${Utils.formatDate(msg.fecha)} â€¢ ${msg.fecha.split(' ')[1]}</div>
                                 </div>
                             </div>
                         </div>
@@ -719,7 +721,7 @@ const CRMModule = {
                             <div class="flex items-center gap-2">
                                 <i data-lucide="briefcase" class="w-4 h-4 text-primary-500"></i>
                                 <select class="bg-transparent border-none text-sm font-bold text-gray-900 focus:ring-0 cursor-pointer p-0" id="link-negocio-msg">
-                                    <option value="">— Sin vincular —</option>
+                                    <option value="">â€” Sin vincular â€”</option>
                                     ${negocios.map(n => `<option value="${n.id}" ${n.id === msg.negocioId ? 'selected' : ''}>${n.titulo}</option>`).join('')}
                                 </select>
                             </div>
@@ -755,7 +757,7 @@ const CRMModule = {
             select.onchange = (e) => {
                 const val = e.target.value ? parseInt(e.target.value) : null;
                 Store.update('crm_mensajes', msg.id, { negocioId: val });
-                Components.toast('Vinculación actualizada', 'success');
+                Components.toast('VinculaciÃ³n actualizada', 'success');
                 // Re-render inbox to show changes
                 this.renderInbox(document.getElementById('crm-content'));
                 this.viewMessage(msg.id);
@@ -782,7 +784,7 @@ const CRMModule = {
             if (interactions.length === 0) return `
                 <div class="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
                     <i data-lucide="history" class="w-16 h-16 mb-4"></i>
-                    <p class="font-bold">No hay actividad registrada aún</p>
+                    <p class="font-bold">No hay actividad registrada aÃºn</p>
                     <p class="text-xs">Usa los botones superiores para registrar llamadas o correos.</p>
                 </div>
             `;
@@ -800,7 +802,7 @@ const CRMModule = {
                                     <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                                         <div class="flex justify-between items-start mb-2">
                                             <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">${item.tipo} • ${Utils.formatRelativeTime(item.fecha)}</div>
+                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">${item.tipo} â€¢ ${Utils.formatRelativeTime(item.fecha)}</div>
                                                 <h5 class="font-bold text-gray-900">${item.titulo}</h5>
                                             </div>
                                             <span class="badge ${item.completada ? 'badge-success' : 'badge-warning'} text-[10px] uppercase">${item.completada ? 'Completado' : 'Pendiente'}</span>
@@ -821,7 +823,7 @@ const CRMModule = {
                                     <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
                                         <div class="flex justify-between items-start mb-2">
                                             <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">CORREO • ${Utils.formatRelativeTime(item.fecha)}</div>
+                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">CORREO â€¢ ${Utils.formatRelativeTime(item.fecha)}</div>
                                                 <h5 class="font-bold text-gray-900">${item.asunto}</h5>
                                             </div>
                                             <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
@@ -877,7 +879,7 @@ const CRMModule = {
                     </div>
                     <div class="flex gap-2">
                         <button class="btn btn-outline" onclick="CRMModule.showOportunidadForm(${negocio.id})"><i data-lucide="edit-3" class="w-4 h-4 mr-2"></i> Editar</button>
-                        <button class="btn btn-primary shadow-lg shadow-primary-200"><i data-lucide="send" class="w-4 h-4 mr-2"></i> Enviar Cotización</button>
+                        <button class="btn btn-primary shadow-lg shadow-primary-200"><i data-lucide="send" class="w-4 h-4 mr-2"></i> Enviar CotizaciÃ³n</button>
                     </div>
                 </div>
 
@@ -927,7 +929,7 @@ const CRMModule = {
                                 <i data-lucide="mail" class="w-3.5 h-3.5"></i> Correo
                             </button>
                             <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="users" class="w-3.5 h-3.5"></i> Reunión
+                                <i data-lucide="users" class="w-3.5 h-3.5"></i> ReuniÃ³n
                             </button>
                             <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2">
                                 <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nota
@@ -1009,9 +1011,9 @@ const CRMModule = {
 
     renderKanbanBoard(container, oportunidades) {
         const stages = [
-            { id: 'calificacion', name: 'Calificación', color: '#94a3b8' },
+            { id: 'calificacion', name: 'CalificaciÃ³n', color: '#94a3b8' },
             { id: 'propuesta', name: 'Propuesta', color: '#3b82f6' },
-            { id: 'negociacion', name: 'Negociación', color: '#f59e0b' },
+            { id: 'negociacion', name: 'NegociaciÃ³n', color: '#f59e0b' },
             { id: 'ganada', name: 'Ganadas', color: '#10b981' },
             { id: 'perdida', name: 'Perdidas', color: '#ef4444' }
         ];
@@ -1100,7 +1102,7 @@ const CRMModule = {
 
         const formContent = `
             <form id="opp-form">
-                ${Components.formInput({ label: 'Título del Negocio', name: 'titulo', value: oportunidad?.titulo || '', required: true })}
+                ${Components.formInput({ label: 'TÃ­tulo del Negocio', name: 'titulo', value: oportunidad?.titulo || '', required: true })}
                 ${Components.formInput({
             label: 'Cliente',
             name: 'clienteId',
@@ -1118,9 +1120,9 @@ const CRMModule = {
             type: 'select',
             value: oportunidad?.etapa || 'calificacion',
             options: [
-                { value: 'calificacion', label: 'Calificación' },
+                { value: 'calificacion', label: 'CalificaciÃ³n' },
                 { value: 'propuesta', label: 'Propuesta' },
-                { value: 'negociacion', label: 'Negociación' },
+                { value: 'negociacion', label: 'NegociaciÃ³n' },
                 { value: 'ganada', label: 'Ganada' },
                 { value: 'perdida', label: 'Perdida' }
             ]
@@ -1277,7 +1279,7 @@ const CRMModule = {
                 ? '<span class="badge badge-success" style="font-size:10px;">Realizada</span>'
                 : '<span class="badge badge-warning" style="font-size:10px;">Pendiente</span>'}
                     </div>
-                    <div class="timeline-description">${act.cliente}${act.responsable ? ` · <strong>${act.responsable}</strong>` : ''}</div>
+                    <div class="timeline-description">${act.cliente}${act.responsable ? ` Â· <strong>${act.responsable}</strong>` : ''}</div>
                     ${act.resultado ? `<div class="text-sm text-gray-600 mt-1 italic">"${act.resultado}"</div>` : ''}
                     <div class="timeline-time">${Utils.formatDate(act.fecha)} - ${act.hora}</div>
                 </div>
@@ -1385,11 +1387,11 @@ const CRMModule = {
             value: actividad?.tipo || 'reunion',
             options: [
                 { value: 'llamada', label: 'Llamada' },
-                { value: 'reunion', label: 'Reunión' },
+                { value: 'reunion', label: 'ReuniÃ³n' },
                 { value: 'email', label: 'Email' }
             ]
         })}
-                ${Components.formInput({ label: 'Asunto / Título', name: 'titulo', value: actividad?.titulo || '', required: true })}
+                ${Components.formInput({ label: 'Asunto / TÃ­tulo', name: 'titulo', value: actividad?.titulo || '', required: true })}
                 <div class="grid grid-cols-2 gap-4">
                     ${Components.formInput({
             label: 'Cliente',
@@ -1404,7 +1406,7 @@ const CRMModule = {
             name: 'negocio_selector',
             type: 'select',
             value: preOportunidadId,
-            options: [{ value: '', label: '— Sin vincular —' }, ...clienteOpps.map(o => ({ value: o.id, label: o.titulo }))]
+            options: [{ value: '', label: 'â€” Sin vincular â€”' }, ...clienteOpps.map(o => ({ value: o.id, label: o.titulo }))]
         })}
                 </div>
                 ${Components.formInput({
@@ -1413,7 +1415,7 @@ const CRMModule = {
             type: 'select',
             required: true,
             value: preResponsable,
-            options: empleados.map(e => ({ value: e.nombre, label: `${e.nombre} — ${e.cargo}` }))
+            options: empleados.map(e => ({ value: e.nombre, label: `${e.nombre} â€” ${e.cargo}` }))
         })}
                 <div class="grid grid-cols-2 gap-4">
                     ${Components.formInput({ label: 'Fecha', name: 'fecha', type: 'date', value: actividad?.fecha || new Date().toISOString().split('T')[0], required: true })}
@@ -1432,7 +1434,7 @@ const CRMModule = {
             name: 'resultado',
             type: 'textarea',
             value: actividad?.resultado || '',
-            placeholder: 'Describe el resultado de la reunión o llamada...'
+            placeholder: 'Describe el resultado de la reuniÃ³n o llamada...'
         })}
                     </div>
                 </div>
@@ -1469,7 +1471,7 @@ const CRMModule = {
             clienteSelect.addEventListener('change', () => {
                 const selectedCliente = clienteSelect.value;
                 const filteredOpps = oportunidades.filter(o => o.cliente === selectedCliente);
-                negocioSelect.innerHTML = `<option value="">— Sin vincular —</option>` +
+                negocioSelect.innerHTML = `<option value="">â€” Sin vincular â€”</option>` +
                     filteredOpps.map(o => `<option value="${o.id}">${o.titulo}</option>`).join('');
                 negocioSelect.value = '';
                 if (hiddenOppId) hiddenOppId.value = '';
@@ -1517,4 +1519,4 @@ const CRMModule = {
 };
 
 window.CRMModule = CRMModule;
-console.log('CRMModule: Módulo cargado correctamente y listo.');
+console.log('CRMModule: MÃ³dulo cargado correctamente y listo.');

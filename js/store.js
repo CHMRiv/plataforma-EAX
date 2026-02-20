@@ -588,7 +588,86 @@ const Store = {
                     estado: 'Caducada'
                 }
             ]
-        }
+        },
+
+        // Importaciones
+        importaciones: [
+            {
+                id: 1,
+                operacion: 'IMP-2024-001',
+                proveedor: 'PowerTech Global',
+                origen: 'China',
+                incoterm: 'CIF',
+                puerto: 'San Antonio',
+                estado: 'En Tránsito',
+                prioridad: 'Alta',
+                logistica: {
+                    modo: 'Marítimo',
+                    carrier: 'Maersk Line',
+                    documento: 'MSK-99021134',
+                    etd: '2024-01-10',
+                    eta: '2024-02-15'
+                },
+                items: [
+                    { sku: 'MOT-5HP-001', descripcion: 'Motor Eléctrico 5HP', cantidad: 50, precioUnitario: 350 },
+                    { sku: 'VAR-10HP-002', descripcion: 'Variador G120', cantidad: 20, precioUnitario: 650 }
+                ],
+                costos: {
+                    valorFob: 30500,
+                    flete: 2500,
+                    seguro: 450,
+                    gastosTerminales: 800,
+                    arancel: 1830, // 6%
+                    iva: 6694,    // 19%
+                    totalLanded: 42774
+                },
+                hitos: [
+                    { nombre: 'PO Emitida', fecha: '2024-01-02', completado: true },
+                    { nombre: 'Carga Lista', fecha: '2024-01-08', completado: true },
+                    { nombre: 'Embarcado', fecha: '2024-01-10', completado: true },
+                    { nombre: 'En Tránsito', fecha: '2024-01-15', completado: true },
+                    { nombre: 'Llegada Puerto', fecha: '2024-02-15', completado: false },
+                    { nombre: 'Despacho Aduana', fecha: '2024-02-18', completado: false },
+                    { nombre: 'Entrega Bodega', fecha: '2024-02-22', completado: false }
+                ]
+            },
+            {
+                id: 2,
+                operacion: 'IMP-2024-002',
+                proveedor: 'EcoEnergy Solutions',
+                origen: 'Alemania',
+                incoterm: 'DAP',
+                puerto: 'Pudahuel (SCL)',
+                estado: 'Aduana',
+                prioridad: 'Urgente',
+                logistica: {
+                    modo: 'Aéreo',
+                    carrier: 'Lufthansa Cargo',
+                    documento: 'AWB-772-1029',
+                    etd: '2024-02-01',
+                    eta: '2024-02-05'
+                },
+                items: [
+                    { sku: 'PLC-S7-003', descripcion: 'PLC Siemens S7-1200', cantidad: 100, precioUnitario: 890 }
+                ],
+                costos: {
+                    valorFob: 89000,
+                    flete: 4200,
+                    seguro: 1200,
+                    gastosTerminales: 1500,
+                    arancel: 5340,
+                    iva: 19200,
+                    totalLanded: 120440
+                },
+                hitos: [
+                    { nombre: 'PO Emitida', fecha: '2024-01-20', completado: true },
+                    { nombre: 'Embarcado', fecha: '2024-02-01', completado: true },
+                    { nombre: 'Arribo', fecha: '2024-02-05', completado: true },
+                    { nombre: 'Aduana', fecha: '2024-02-06', completado: true },
+                    { nombre: 'Pago Impuestos', fecha: '2024-02-07', completado: false }
+                ]
+            }
+        ]
     },
 
     // Event listeners

@@ -92,7 +92,8 @@ const Router = {
             postventa: 'Postventa',
             comunicaciones: 'Comunicaciones',
             intranet: 'Intranet',
-            proveedores: 'Proveedores'
+            proveedores: 'Proveedores',
+            importaciones: 'Importaciones'
         };
 
         let items = [{ name: moduleNames[params.module] || params.module, path: `#/${params.module}` }];

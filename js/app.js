@@ -325,6 +325,7 @@ const App = {
         Router.register('proveedores', () => safeRender(ProveedoresModule, 'Proveedores'));
         Router.register('comunicaciones', () => safeRender(ComunicacionesModule, 'Comunicaciones'));
         Router.register('intranet', () => safeRender(IntranetModule, 'Intranet'));
+        Router.register('importaciones', () => safeRender(ImportacionesModule, 'Importaciones'));
     },
 
     // Render content to main area

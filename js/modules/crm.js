@@ -215,10 +215,8 @@
                     const opps = Store.get('oportunidades') || [];
 
                     container.innerHTML = `
-                        <div class="kanban-layout animate-fadeIn">
-                             <div class="grid grid-cols-5 gap-6" id="kanban-scroll-area">
+                        <div class="kanban-board animate-fadeIn">
                                 ${this.renderStages(opps)}
-                             </div>
                         </div>
                     `;
 
@@ -239,41 +237,41 @@
                         const total = items.reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
                         return `
-                            <div class="kanban-col flex flex-col gap-5" data-stage="${stage.id}">
-                                <div class="flex items-center justify-between px-3 h-10">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm bg-${stage.color}-500"></div>
-                                        <span class="text-[11px] font-black uppercase text-gray-400 tracking-[0.2em]">${stage.label}</span>
+                            <div class="kanban-column" data-status="${stage.id}">
+                                <div class="kanban-column-header">
+                                    <div class="kanban-column-title">
+                                        <div class="w-2.5 h-2.5 rounded-full bg-${stage.color}-500"></div>
+                                        <span>${stage.label}</span>
+                                        <span class="kanban-column-count">${items.length}</span>
                                     </div>
-                                    <div class="bg-white/80 px-2 py-0.5 rounded-lg border border-gray-100 text-[10px] font-black text-gray-400 shadow-sm">${items.length}</div>
+                                    <div class="text-[10px] font-bold text-gray-400">${Utils.formatCurrency(total)}</div>
                                 </div>
                                 
-                                <div class="kanban-drop-zone min-h-[600px] flex flex-col gap-4 p-3 bg-gray-50/40 rounded-[32px] border-2 border-dashed border-transparent transition-all hover:bg-gray-100/40" data-stage-id="${stage.id}">
+                                <div class="kanban-column-body custom-scrollbar" data-status="${stage.id}">
                                     ${items.map(item => `
-                                        <div class="kanban-card-v6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100/60 cursor-grab active:cursor-grabbing hover:shadow-xl hover:border-primary-100/50 transition-all group relative overflow-hidden animate-fadeInUp" draggable="true" data-id="${item.id}">
-                                            <div class="absolute top-0 left-0 w-1.5 h-full bg-${stage.color}-500/80"></div>
-                                            <div class="text-[9px] font-black text-primary-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                                                <i data-lucide="building-2" class="w-3 h-3"></i> ${item.cliente}
-                                            </div>
-                                            <h4 class="font-bold text-gray-900 text-sm leading-relaxed mb-4 group-hover:text-primary-600">${item.titulo}</h4>
-                                            
-                                            <div class="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
-                                                <div>
-                                                    <div class="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Value Est.</div>
-                                                    <div class="font-black text-xs text-gray-800">${Utils.formatCurrency(item.valor)}</div>
-                                                </div>
-                                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[10px] font-black text-gray-500 shadow-inner group-hover:from-primary-50 group-hover:to-primary-100 group-hover:text-primary-600 transition-all" title="${item.responsable}">
+                                        <div class="kanban-card group active:scale-[0.98] transition-all" draggable="true" data-id="${item.id}">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <span class="px-2 py-0.5 rounded-md bg-primary-50 text-2xs font-bold text-primary-600 uppercase tracking-tight">
+                                                    ${item.cliente}
+                                                </span>
+                                                <div class="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center text-3xs font-black text-gray-400 shadow-sm">
                                                     ${Utils.getInitials(item.responsable)}
                                                 </div>
                                             </div>
+                                            <h4 class="font-bold text-gray-900 text-sm leading-snug mb-4 group-hover:text-primary-600 transition-colors line-clamp-2">${item.titulo}</h4>
+                                            
+                                            <div class="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
+                                                <div class="flex items-center gap-1.5 text-gray-400">
+                                                    <i data-lucide="dollar-sign" class="w-3.5 h-3.5"></i>
+                                                    <span class="font-black text-xs text-gray-900">${Utils.formatCurrency(item.valor)}</span>
+                                                </div>
+                                                <div class="text-2xs font-black text-gray-400 uppercase tracking-widest">Lead</div>
+                                            </div>
                                         </div>
                                     `).join('')}
-                                    <button class="w-full py-4 border-2 border-dashed border-gray-200 rounded-3xl text-gray-300 hover:border-primary-200 hover:text-primary-400 hover:bg-white transition-all text-xs font-bold flex items-center justify-center gap-2" onclick="window.CRMModule.showNegocioForm(null, {etapa: '${stage.id}'})">
-                                        <i data-lucide="plus" class="w-4 h-4"></i> Crear Oportunidad
+                                    <button class="btn btn-ghost btn-sm w-full mt-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 border border-dashed border-gray-200" onclick="window.CRMModule.showNegocioForm(null, {etapa: '${stage.id}'})">
+                                        <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Crear Registro
                                     </button>
-                                </div>
-                                <div class="px-3 text-right">
-                                    <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Capacidad: ${Utils.formatCurrency(total)}</span>
                                 </div>
                             </div>
                         `;
@@ -293,20 +291,20 @@
                         card.addEventListener('click', () => parent.showNegocioDetail(parseInt(card.dataset.id)));
                     });
 
-                    zones.forEach(zone => {
+                    container.querySelectorAll('.kanban-column-body').forEach(zone => {
                         zone.addEventListener('dragover', (e) => {
                             e.preventDefault();
-                            zone.classList.add('bg-primary-50/50', 'border-primary-200');
+                            zone.classList.add('bg-primary-50/30', 'border-primary-200');
                         });
                         zone.addEventListener('dragleave', () => {
-                            zone.classList.remove('bg-primary-50/50', 'border-primary-200');
+                            zone.classList.remove('bg-primary-50/30', 'border-primary-200');
                         });
                         zone.addEventListener('drop', (e) => {
                             e.preventDefault();
                             zone.classList.remove('bg-primary-50/50', 'border-primary-200');
 
                             const id = parseInt(e.dataTransfer.getData('text/plain'));
-                            const newStage = zone.dataset.stageId;
+                            const newStage = zone.dataset.status;
 
                             const opp = Store.find('oportunidades', id);
                             if (opp && opp.etapa !== newStage) {
@@ -324,27 +322,43 @@
                     const acts = Store.get('actividades') || [];
 
                     container.innerHTML = `
-                        <div class="grid grid-cols-12 gap-8">
-                            <div class="col-span-8 flex flex-col gap-6">
-                                <div class="flex items-center justify-between px-2">
-                                    <h3 class="font-black text-gray-900">Historial de Actividad</h3>
-                                    <div class="flex gap-2">
-                                        <button class="btn btn-xs btn-ghost active" data-filter="all">Todas</button>
-                                        <button class="btn btn-xs btn-ghost" data-filter="pending">Pendientes</button>
+                        <div class="grid grid-cols-12 gap-8 animate-fadeIn">
+                            <div class="col-span-8">
+                                <div class="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+                                    <div class="p-6 border-b border-gray-50 flex items-center justify-between bg-gray-50/30">
+                                        <h3 class="font-black text-gray-900 text-base">Timeline de Interacciones</h3>
+                                        <div class="flex gap-1 p-1 bg-white rounded-xl shadow-inner">
+                                            <button class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active bg-primary-600 text-white shadow-md shadow-primary-100" data-filter="all">Todas</button>
+                                            <button class="px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-primary-600 transition-all" data-filter="pending">Pendientes</button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="space-y-4" id="activity-timeline-new">
-                                    ${this.renderTimeline(acts)}
+                                    <div class="p-8 space-y-0 relative" id="activity-timeline-new">
+                                        <div class="absolute left-[59px] top-8 bottom-8 w-px bg-gray-100"></div>
+                                        ${this.renderTimeline(acts)}
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="col-span-4">
-                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-4">
-                                    <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <i data-lucide="calendar" class="w-4 h-4 text-primary-500"></i> Calendario Fugaz
+                                <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 sticky top-4">
+                                    <h4 class="font-black text-gray-900 text-sm mb-6 flex items-center gap-2 uppercase tracking-widest">
+                                        <i data-lucide="calendar-days" class="w-4 h-4 text-primary-500"></i> Calendario Comercial
                                     </h4>
-                                    <div id="mini-calendar-new">
+                                    <div id="mini-calendar-new" class="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
                                         ${parent.renderMiniCalendar(acts)}
+                                    </div>
+                                    <div class="mt-8">
+                                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Próximos Hitos</div>
+                                        <div class="space-y-3">
+                                            <div class="p-3 rounded-2xl bg-primary-50 border border-primary-100 flex items-center gap-3">
+                                                <div class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></div>
+                                                <div class="text-xs font-black text-primary-900">Demo Técnica Aura</div>
+                                            </div>
+                                            <div class="p-3 rounded-2xl bg-amber-50 border border-amber-100 flex items-center gap-3">
+                                                <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+                                                <div class="text-xs font-black text-amber-900">Cierre Q1 - Rev. Metas</div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -355,27 +369,23 @@
                 },
 
                 renderTimeline(acts) {
-                    if (!acts.length) return `<div class="p-12 text-center text-gray-400 bg-white rounded-3xl">No hay actividades registradas.</div>`;
+                    if (!acts.length) return `<div class="p-12 text-center text-gray-400 italic">No hay registros de actividad</div>`;
 
                     const sorted = acts.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
                     return sorted.map(a => `
-                        <div class="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex gap-6 hover:shadow-xl hover:border-primary-100/50 transition-all cursor-pointer group animate-fadeInUp" onclick="window.CRMModule.showActividadForm(${a.id})">
-                            <div class="w-14 h-14 rounded-2xl ${a.completada ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50/50 text-primary-600'} flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                                <i data-lucide="${a.tipo === 'llamada' ? 'phone' : a.tipo === 'reunion' ? 'users' : 'mail'}" class="w-6 h-6"></i>
-                            </div>
-                            <div class="flex-1">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">${a.tipo} • ${Utils.formatRelativeTime(a.fecha)}</div>
-                                    <span class="badge ${a.completada ? 'badge-success shadow-sm shadow-emerald-100' : 'badge-warning shadow-sm shadow-amber-100'} text-[9px] uppercase font-black px-3">${a.completada ? 'Completada' : 'Agenda'}</span>
+                        <div class="relative pl-16 pb-10 last:pb-0 group cursor-pointer" onclick="window.CRMModule.showActividadForm(${a.id})">
+                            <div class="absolute left-[20px] top-1.5 w-2 h-2 rounded-full bg-white border-2 ${a.completada ? 'border-emerald-500' : 'border-primary-500'} z-10 transition-transform group-hover:scale-150"></div>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-2xs font-black text-gray-400 uppercase tracking-widest">${Utils.formatRelativeTime(a.fecha)}</span>
+                                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                                    <span class="text-2xs font-black ${a.completada ? 'text-emerald-500' : 'text-primary-500'} uppercase tracking-tight">${a.tipo}</span>
                                 </div>
-                                <h5 class="font-bold text-gray-900 text-base group-hover:text-primary-600 transition-colors">${a.titulo}</h5>
-                                <div class="text-xs text-gray-500 mt-1.5 flex items-center gap-2">
-                                    <span class="font-black text-primary-500">${a.cliente}</span> 
-                                    <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                    <span>Resp: <strong>${a.responsable}</strong></span>
+                                <h5 class="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">${a.titulo}</h5>
+                                <div class="text-xs text-secondary mt-1 max-w-xl leading-relaxed">
+                                    ${a.resultado || `Seguimiento activo con <span class="font-bold text-gray-700">${a.cliente}</span>. Responsable: ${a.responsable}.`}
                                 </div>
-                                ${a.resultado ? `<div class="mt-4 p-4 bg-gray-50/80 rounded-2xl text-xs italic text-gray-600 border-l-4 border-primary-300 backdrop-blur-sm">"${a.resultado}"</div>` : ''}
                             </div>
                         </div>
                     `).join('');
@@ -425,16 +435,16 @@
                 },
 
                 renderMsgList(msgs) {
-                    if (!msgs.length) return `<div class="p-8 text-center text-gray-400 text-xs">Sin mensajes.</div>`;
+                    if (!msgs.length) return `<div class="p-12 text-center text-gray-400 italic">No hay mensajes recientes</div>`;
 
                     return msgs.map(m => `
-                        <div class="p-5 border-b border-gray-50 cursor-pointer hover:bg-white transition-all msg-item-new ${m.leido ? '' : 'bg-primary-50/30 border-l-4 border-l-primary-500'}" data-id="${m.id}">
-                            <div class="flex justify-between items-start mb-1">
-                                <div class="font-bold text-sm text-gray-900 truncate pr-4">${m.de}</div>
-                                <div class="text-[9px] text-gray-400 font-bold uppercase">${Utils.formatRelativeTime(m.fecha)}</div>
+                        <div class="p-6 border-b border-gray-50 cursor-pointer hover:bg-white transition-all msg-item-new group ${m.leido ? 'opacity-60' : 'bg-primary-50/50 border-l-4 border-l-primary-500'}" data-id="${m.id}">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="font-black text-gray-900 text-sm truncate pr-4">${m.de}</div>
+                                <div class="text-[9px] font-black text-gray-400 uppercase shrink-0">${Utils.formatRelativeTime(m.fecha)}</div>
                             </div>
-                            <div class="text-xs font-black text-primary-600 mb-2 truncate">${m.asunto}</div>
-                            <div class="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">${m.cuerpo}</div>
+                            <div class="text-xs font-bold text-primary-600 mb-1 group-hover:underline">${m.asunto}</div>
+                            <div class="text-xs text-secondary line-clamp-2 leading-relaxed pb-1">${m.cuerpo}</div>
                         </div>
                     `).join('');
                 },
@@ -990,7 +1000,7 @@
                         <button class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100" id="cal-next-btn"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
                     </div>
                 </div>
-                <div class="grid grid-cols-7 text-center text-[10px] font-black text-gray-300 mb-2 uppercase">
+                <div class="grid grid-cols-7 text-center text-2xs font-black text-gray-300 mb-2 uppercase">
                     <div>Do</div><div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sa</div>
                 </div>
                 <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs" id="cal-grid-new">

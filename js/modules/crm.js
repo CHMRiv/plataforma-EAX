@@ -1,1520 +1,1052 @@
 /* ==========================================================================
-   Aura Platform - CRM Module
+   Aura Platform - CRM Module (Legacy Reborn)
    ========================================================================== */
 
-const CRMModule = {
-    currentTab: 'clientes',
+(function () {
+    'use strict';
 
-    render() {
-        console.log('CRMModule: Invocando render...');
-        const content = document.getElementById('page-content');
-        if (!content) {
-            console.error('CRMModule: No se encontró el contenedor page-content');
-            return;
-        }
+    const CRMModule = {
+        currentTab: 'clientes',
 
-        content.innerHTML = `
-            <div class="animate-fadeIn">
-                ${Components.pageHeader({
-            title: 'CRM',
-            subtitle: 'Gestión de clientes y negocios comerciales',
-            actions: [
-                { label: 'Exportar', icon: 'download', class: 'btn-outline', action: 'export' },
-                { label: 'Nuevo Cliente', icon: 'plus', class: 'btn-primary', action: 'new-cliente' }
-            ]
-        })}
-                
-                ${Components.tabs({
-            tabs: [
-                { id: 'clientes', label: 'Clientes', icon: 'users' },
-                { id: 'negocios', label: 'Negocios', icon: 'briefcase' },
-                { id: 'inbox', label: 'Bandeja de Entrada', icon: 'mail' },
-                { id: 'actividades', label: 'Actividades', icon: 'calendar' }
-            ],
-            activeTab: this.currentTab
-        })}
-                
-                <div id="crm-content"></div>
-            </div>
-        `;
+        // Initial state for calendar
+        _calYear: new Date().getFullYear(),
+        _calMonth: new Date().getMonth(),
 
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-        this.attachTabEvents();
-        this.renderTab(this.currentTab);
-    },
+        /**
+         * Main render entry point
+         */
+        render() {
+            const container = document.getElementById('page-content');
+            if (!container) return;
 
-    attachTabEvents() {
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                this.currentTab = tab.dataset.tab;
-                this.renderTab(this.currentTab);
-            });
-        });
+            container.innerHTML = `
+                <div class="animate-fadeIn">
+                    ${Components.pageHeader({
+                title: 'Aura CRM Intelligent Hub',
+                subtitle: 'Gestión predictiva de relaciones y pipeline comercial estratégico',
+                actions: [
+                    { label: 'Intelligence Export', icon: 'sparkles', class: 'btn-outline border-primary-200 text-primary-600', action: 'export-crm' },
+                    { label: 'Nuevo Registro', icon: 'plus', class: 'btn-primary shadow-lg shadow-primary-100', action: 'new-record' }
+                ]
+            })}
 
-        document.querySelector('[data-action="new-cliente"]')?.addEventListener('click', () => {
-            this.showClienteForm();
-        });
-
-        document.querySelector('[data-action="export"]')?.addEventListener('click', () => {
-            const data = Store.get(this.currentTab === 'negocios' ? 'oportunidades' : this.currentTab);
-            Utils.downloadCSV(data, `${this.currentTab}_${Date.now()}.csv`);
-            Components.toast('Datos exportados correctamente', 'success');
-        });
-    },
-
-    renderTab(tab) {
-        const container = document.getElementById('crm-content');
-
-        switch (tab) {
-            case 'clientes':
-                this.renderClientes(container);
-                break;
-            case 'negocios':
-                this.renderNegocios(container);
-                break;
-            case 'inbox':
-                this.renderInbox(container);
-                break;
-            case 'actividades':
-                this.renderActividades(container);
-                break;
-        }
-    },
-
-    renderClientes(container) {
-        const clientes = Store.get('clientes');
-
-        container.innerHTML = `
-            <div class="card">
-                <div class="card-header">
-                    <div class="flex gap-4 items-center">
-                        ${Components.searchInput({ placeholder: 'Buscar clientes...', id: 'search-clientes' })}
-                        <select class="form-select" style="width: 180px;" id="filter-estado">
-                            <option value="">Todos los estados</option>
-                            <option value="Activo">Activo</option>
-                            <option value="Prospecto">Prospecto</option>
-                            <option value="Inactivo">Inactivo</option>
-                        </select>
+                    <div class="mb-8">
+                        ${Components.tabs({
+                tabs: [
+                    { id: 'clientes', label: 'Directorio Clientes', icon: 'users' },
+                    { id: 'negocios', label: 'Pipeline de Negocios', icon: 'trending-up' },
+                    { id: 'actividades', label: 'Agenda & Actividades', icon: 'calendar-days' },
+                    { id: 'comunicaciones', label: 'Comunicaciones', icon: 'mail' }
+                ],
+                activeTab: this.currentTab
+            })}
                     </div>
+
+                    <div id="crm-main-viewport" class="animate-fadeIn"></div>
                 </div>
-                <div class="card-body p-0">
-                    ${Components.dataTable({
-            columns: [
-                { key: 'nombre', label: 'Empresa' },
-                { key: 'rut', label: 'RUT' },
-                { key: 'sector', label: 'Sector' },
-                { key: 'contacto', label: 'Contacto' },
-                { key: 'email', label: 'Email' },
-                { key: 'estado', label: 'Estado', type: 'badge' },
-                { key: 'oportunidades', label: 'Negocios' },
-                { key: 'valor', label: 'Valor Histórico', type: 'currency' }
-            ],
-            data: clientes,
-            actions: [
-                { icon: 'eye', label: 'Ver', action: 'view' },
-                { icon: 'edit', label: 'Editar', action: 'edit' },
-                { icon: 'trash-2', label: 'Eliminar', action: 'delete' }
-            ]
-        })}
-                </div>
-            </div>
-        `;
+            `;
 
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-        this.attachClienteEvents();
-    },
+            this.initGlobalEvents();
+            this.renderCurrentTab();
+            if (window.lucide) lucide.createIcons();
+        },
 
-    attachClienteEvents() {
-        // Search
-        document.getElementById('search-clientes')?.addEventListener('input', Utils.debounce((e) => {
-            this.filterClientes();
-        }, 300));
+        /**
+         * Setup global module events (Header buttons, etc)
+         */
+        initGlobalEvents() {
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    const nextTab = tab.dataset.tab;
+                    if (this.currentTab === nextTab) return;
 
-        // Filter by estado
-        document.getElementById('filter-estado')?.addEventListener('change', () => {
-            this.filterClientes();
-        });
-
-        // Action buttons
-        document.querySelectorAll('[data-action="view"]').forEach(btn => {
-            btn.addEventListener('click', () => this.showClienteDetail(parseInt(btn.dataset.id)));
-        });
-
-        document.querySelectorAll('[data-action="edit"]').forEach(btn => {
-            btn.addEventListener('click', () => this.showClienteForm(parseInt(btn.dataset.id)));
-        });
-
-        document.querySelectorAll('[data-action="delete"]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const confirmed = await Components.confirm({
-                    title: 'Eliminar Cliente',
-                    message: '¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.',
-                    confirmText: 'Eliminar',
-                    type: 'danger'
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    this.currentTab = nextTab;
+                    this.renderCurrentTab();
                 });
-                if (confirmed) {
-                    Store.delete('clientes', parseInt(btn.dataset.id));
-                    Components.toast('Cliente eliminado', 'success');
-                    this.renderTab('clientes');
-                }
             });
-        });
-    },
 
-    filterClientes() {
-        const searchTerm = document.getElementById('search-clientes')?.value || '';
-        const estadoFilter = document.getElementById('filter-estado')?.value || '';
+            // Action: New Record based on context
+            document.querySelector('[data-action="new-record"]')?.addEventListener('click', () => {
+                if (this.currentTab === 'clientes') this.showClienteForm();
+                else if (this.currentTab === 'negocios') this.showNegocioForm();
+                else if (this.currentTab === 'actividades') this.showActividadForm();
+            });
 
-        let clientes = Store.get('clientes');
+            // Action: Export
+            document.querySelector('[data-action="export-crm"]')?.addEventListener('click', () => {
+                const data = Store.get(this.currentTab === 'negocios' ? 'oportunidades' : this.currentTab);
+                Utils.downloadCSV(data, `aura_crm_${this.currentTab}_${new Date().toISOString().split('T')[0]}.csv`);
+                Components.toast('Exportación completada', 'success');
+            });
+        },
 
-        if (searchTerm) {
-            clientes = Utils.search(clientes, searchTerm, ['nombre', 'contacto', 'email', 'rut']);
-        }
+        /**
+         * Orchestrates tab rendering
+         */
+        renderCurrentTab() {
+            const viewport = document.getElementById('crm-main-viewport');
+            if (!viewport) return;
 
-        if (estadoFilter) {
-            clientes = clientes.filter(c => c.estado === estadoFilter);
-        }
+            viewport.innerHTML = ''; // Clear
 
-        const container = document.getElementById('crm-content');
-        this.renderClientesTable(container, clientes);
-    },
-
-    renderClientesTable(container, clientes) {
-        const tableContainer = container.querySelector('.card-body');
-        tableContainer.innerHTML = Components.dataTable({
-            columns: [
-                { key: 'nombre', label: 'Empresa' },
-                { key: 'rut', label: 'RUT' },
-                { key: 'sector', label: 'Sector' },
-                { key: 'contacto', label: 'Contacto' },
-                { key: 'email', label: 'Email' },
-                { key: 'estado', label: 'Estado', type: 'badge' },
-                { key: 'oportunidades', label: 'Negocios' },
-                { key: 'valor', label: 'Valor Histórico', type: 'currency' }
-            ],
-            data: clientes,
-            actions: [
-                { icon: 'eye', label: 'Ver', action: 'view' },
-                { icon: 'edit', label: 'Editar', action: 'edit' },
-                { icon: 'trash-2', label: 'Eliminar', action: 'delete' }
-            ]
-        });
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-        this.attachClienteEvents();
-    },
-
-    showClienteForm(id = null) {
-        const cliente = id ? Store.find('clientes', id) : null;
-        const isEdit = !!cliente;
-
-        const formContent = `
-            <form id="cliente-form">
-                <div class="grid grid-cols-2 gap-4">
-                    ${Components.formInput({ label: 'Nombre Empresa', name: 'nombre', value: cliente?.nombre || '', required: true })}
-                    ${Components.formInput({ label: 'RUT', name: 'rut', value: cliente?.rut || '', required: true })}
-                    ${Components.formInput({
-            label: 'Sector',
-            name: 'sector',
-            type: 'select',
-            value: cliente?.sector || '',
-            options: [
-                { value: 'Minería', label: 'Minería' },
-                { value: 'Manufactura', label: 'Manufactura' },
-                { value: 'Construcción', label: 'Construcción' },
-                { value: 'Tecnología', label: 'Tecnología' },
-                { value: 'Agricultura', label: 'Agricultura' },
-                { value: 'Otro', label: 'Otro' }
-            ]
-        })}
-                    ${Components.formInput({
-            label: 'Estado',
-            name: 'estado',
-            type: 'select',
-            value: cliente?.estado || 'Prospecto',
-            options: [
-                { value: 'Prospecto', label: 'Prospecto' },
-                { value: 'Activo', label: 'Activo' },
-                { value: 'Inactivo', label: 'Inactivo' }
-            ]
-        })}
-                    ${Components.formInput({ label: 'Contacto Principal', name: 'contacto', value: cliente?.contacto || '', required: true })}
-                    ${Components.formInput({ label: 'Email', name: 'email', type: 'email', value: cliente?.email || '', required: true })}
-                    ${Components.formInput({ label: 'Teléfono', name: 'telefono', value: cliente?.telefono || '' })}
-                </div>
-            </form>
-        `;
-
-        const { modal, close } = Components.modal({
-            title: isEdit ? 'Editar Cliente' : 'Nuevo Cliente',
-            size: 'lg',
-            content: formContent,
-            footer: `
-                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                <button class="btn btn-primary" data-action="save">
-                    <i data-lucide="save"></i>
-                    ${isEdit ? 'Guardar Cambios' : 'Crear Cliente'}
-                </button>
-            `
-        });
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        modal.querySelector('[data-action="cancel"]').addEventListener('click', close);
-        modal.querySelector('[data-action="save"]').addEventListener('click', () => {
-            const form = document.getElementById('cliente-form');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
+            switch (this.currentTab) {
+                case 'clientes':
+                    this.submodules.clientes.render(viewport, this);
+                    break;
+                case 'negocios':
+                    this.submodules.negocios.render(viewport, this);
+                    break;
+                case 'actividades':
+                    this.submodules.actividades.render(viewport, this);
+                    break;
+                case 'comunicaciones':
+                    this.submodules.inbox.render(viewport, this);
+                    break;
             }
+            if (window.lucide) lucide.createIcons();
+        },
 
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            data.oportunidades = cliente?.oportunidades || 0;
-            data.valor = cliente?.valor || 0;
+        // --- Submodules Container ---
+        submodules: {
+            clientes: {
+                render(container, parent) {
+                    const data = Store.get('clientes') || [];
 
-            if (isEdit) {
-                Store.update('clientes', id, data);
-                Components.toast('Cliente actualizado', 'success');
-            } else {
-                Store.add('clientes', data);
-                Components.toast('Cliente creado', 'success');
-            }
-
-            close();
-            this.renderTab('clientes');
-        });
-    },
-
-    showClienteDetail(id) {
-        const cliente = Store.find('clientes', id);
-        if (!cliente) return;
-
-        let activeDetailTab = 'info';
-
-        const renderDetailContent = (tab) => {
-            switch (tab) {
-                case 'info':
-                    return `
-                        <div class="space-y-6">
-                            <div class="grid grid-cols-4 gap-4">
-                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Sector</div>
-                                    <div class="font-bold text-gray-700">${cliente.sector}</div>
+                    container.innerHTML = `
+                        <div class="card border-none shadow-sm bg-white overflow-hidden rounded-3xl">
+                                <div class="p-6 border-b border-gray-50 flex items-center justify-between bg-white/50 backdrop-blur-md">
+                                    <div class="flex gap-4 w-full max-w-2xl px-2">
+                                        <div class="relative flex-1 group">
+                                            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors w-4 h-4"></i>
+                                            <input type="text" id="search-clientes-new" class="form-input pl-12 bg-gray-50/50 border-none rounded-2xl focus:ring-2 focus:ring-primary-500/20 transition-all" placeholder="Filtrar por empresa, contacto o RUT...">
+                                        </div>
+                                        <select class="form-select bg-gray-50/50 border-none rounded-2xl px-6 focus:ring-2 focus:ring-primary-500/20 transition-all font-semibold text-gray-600" id="filter-estado-new">
+                                            <option value="">Todos los Estados</option>
+                                            <option value="Activo">✓ Activos</option>
+                                            <option value="Prospecto">⚡ Prospectos</option>
+                                            <option value="Inactivo">○ Inactivos</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">RUT</div>
-                                    <div class="font-bold text-gray-700">${cliente.rut}</div>
-                                </div>
-                                <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 mb-1">Estado</div>
-                                    <span class="badge badge-${Utils.getStatusColor(cliente.estado)}">${cliente.estado}</span>
-                                </div>
-                                <div class="p-4 bg-primary-50 rounded-xl border border-primary-100">
-                                    <div class="text-[10px] uppercase font-bold text-primary-400 mb-1">Valor Histórico</div>
-                                    <div class="font-bold text-primary-700">${Utils.formatCurrency(cliente.valor)}</div>
-                                </div>
+                                <div class="overflow-x-auto custom-scrollbar" id="clientes-table-container">
+                                ${this.renderTable(data)}
                             </div>
+                        </div>
+                    `;
 
-                            <div>
-                                <div class="flex justify-between items-center mb-4">
-                                    <h4 class="font-bold text-gray-800 flex items-center gap-2">
-                                        <i data-lucide="contact" class="w-5 h-5 text-primary-500"></i> Directorio de Contactos
-                                    </h4>
-                                    <button class="btn btn-sm btn-primary" id="btn-add-contact">
-                                        <i data-lucide="plus" class="w-3 h-3"></i> Agregar Contacto
-                                    </button>
+                    this.attachEvents(container, parent);
+                },
+
+                renderTable(data) {
+                    return Components.dataTable({
+                        columns: [
+                            {
+                                key: 'nombre', label: 'Empresa', render: (val, row) => `
+                                <div class="flex items-center gap-4">
+                                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 text-white flex items-center justify-center font-black shadow-lg shadow-primary-100">
+                                        ${Utils.getInitials(val)}
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-gray-900 group-hover:text-primary-600 transition-colors">${val}</div>
+                                        <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest">${row.rut}</div>
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4" id="contacts-list">
-                                    ${(cliente.contactos || []).map(c => `
-                                        <div class="p-4 border border-gray-100 rounded-xl bg-white hover:border-primary-200 transition-all group relative">
-                                            <div class="flex items-start gap-3">
-                                                <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-bold">
-                                                    ${Utils.getInitials(c.nombre)}
+                            `},
+                            { key: 'sector', label: 'Industria', render: (val) => `<span class="text-xs font-semibold text-gray-500 italic">${val}</span>` },
+                            { key: 'contacto', label: 'Contacto Principal', render: (val) => `<strong>${val}</strong>` },
+                            { key: 'estado', label: 'Estado', type: 'badge' },
+                            { key: 'valor', label: 'Lifetime Value', type: 'currency' }
+                        ],
+                        data: data,
+                        actions: [
+                            { icon: 'external-link', label: 'Ver 360', action: 'view-client' },
+                            { icon: 'edit-2', label: 'Editar', action: 'edit-client' },
+                            { icon: 'trash-2', label: 'Eliminar', action: 'delete-client' }
+                        ]
+                    });
+                },
+
+                attachEvents(container, parent) {
+                    const searchInput = document.getElementById('search-clientes-new');
+                    const statusFilter = document.getElementById('filter-estado-new');
+
+                    const updateTable = () => {
+                        let filtered = Store.get('clientes');
+                        if (searchInput.value) filtered = Utils.search(filtered, searchInput.value, ['nombre', 'rut', 'contacto']);
+                        if (statusFilter.value) filtered = filtered.filter(c => c.estado === statusFilter.value);
+
+                        document.getElementById('clientes-table-container').innerHTML = this.renderTable(filtered);
+                        this.attachEvents(container, parent);
+                        if (window.lucide) lucide.createIcons();
+                    };
+
+                    searchInput?.addEventListener('input', Utils.debounce(updateTable, 300));
+                    statusFilter?.addEventListener('change', updateTable);
+
+                    // Table Actions
+                    container.querySelectorAll('[data-action="view-client"]').forEach(btn => {
+                        btn.onclick = () => parent.showClienteDetail(parseInt(btn.dataset.id));
+                    });
+                    container.querySelectorAll('[data-action="edit-client"]').forEach(btn => {
+                        btn.onclick = () => parent.showClienteForm(parseInt(btn.dataset.id));
+                    });
+                    container.querySelectorAll('[data-action="delete-client"]').forEach(btn => {
+                        btn.onclick = async () => {
+                            const confirmed = await Components.confirm({
+                                title: 'Eliminar Cliente',
+                                message: '¿Estás seguro? Se perderá el historial asociado en esta vista.',
+                                type: 'danger'
+                            });
+                            if (confirmed) {
+                                Store.delete('clientes', parseInt(btn.dataset.id));
+                                Components.toast('Cliente eliminado', 'success');
+                                parent.renderCurrentTab();
+                            }
+                        };
+                    });
+                }
+            },
+
+            negocios: {
+                render(container, parent) {
+                    const opps = Store.get('oportunidades') || [];
+
+                    container.innerHTML = `
+                        <div class="kanban-layout animate-fadeIn">
+                             <div class="grid grid-cols-5 gap-6" id="kanban-scroll-area">
+                                ${this.renderStages(opps)}
+                             </div>
+                        </div>
+                    `;
+
+                    this.attachEvents(container, parent);
+                },
+
+                renderStages(opps) {
+                    const stages = [
+                        { id: 'calificacion', label: 'Calificación', color: 'slate' },
+                        { id: 'propuesta', label: 'Propuesta', color: 'blue' },
+                        { id: 'negociacion', label: 'Negociación', color: 'amber' },
+                        { id: 'ganada', label: 'Ganadas', color: 'emerald' },
+                        { id: 'perdida', label: 'Perdidas', color: 'rose' }
+                    ];
+
+                    return stages.map(stage => {
+                        const items = opps.filter(o => o.etapa === stage.id);
+                        const total = items.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+                        return `
+                            <div class="kanban-col flex flex-col gap-5" data-stage="${stage.id}">
+                                <div class="flex items-center justify-between px-3 h-10">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm bg-${stage.color}-500"></div>
+                                        <span class="text-[11px] font-black uppercase text-gray-400 tracking-[0.2em]">${stage.label}</span>
+                                    </div>
+                                    <div class="bg-white/80 px-2 py-0.5 rounded-lg border border-gray-100 text-[10px] font-black text-gray-400 shadow-sm">${items.length}</div>
+                                </div>
+                                
+                                <div class="kanban-drop-zone min-h-[600px] flex flex-col gap-4 p-3 bg-gray-50/40 rounded-[32px] border-2 border-dashed border-transparent transition-all hover:bg-gray-100/40" data-stage-id="${stage.id}">
+                                    ${items.map(item => `
+                                        <div class="kanban-card-v6 bg-white p-6 rounded-3xl shadow-sm border border-gray-100/60 cursor-grab active:cursor-grabbing hover:shadow-xl hover:border-primary-100/50 transition-all group relative overflow-hidden animate-fadeInUp" draggable="true" data-id="${item.id}">
+                                            <div class="absolute top-0 left-0 w-1.5 h-full bg-${stage.color}-500/80"></div>
+                                            <div class="text-[9px] font-black text-primary-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                                                <i data-lucide="building-2" class="w-3 h-3"></i> ${item.cliente}
+                                            </div>
+                                            <h4 class="font-bold text-gray-900 text-sm leading-relaxed mb-4 group-hover:text-primary-600">${item.titulo}</h4>
+                                            
+                                            <div class="flex items-center justify-between pt-4 border-t border-gray-50 mt-auto">
+                                                <div>
+                                                    <div class="text-[9px] text-gray-400 font-bold uppercase mb-0.5">Value Est.</div>
+                                                    <div class="font-black text-xs text-gray-800">${Utils.formatCurrency(item.valor)}</div>
                                                 </div>
-                                                <div class="flex-1 min-width-0">
-                                                    <div class="font-bold text-gray-900 truncate">${c.nombre}</div>
-                                                    <div class="text-xs text-primary-600 font-semibold mb-2">${c.cargo || 'Contacto'}</div>
-                                                    <div class="space-y-1">
-                                                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                                                            <i data-lucide="mail" class="w-3 h-3 text-gray-400"></i> ${c.email}
-                                                        </div>
-                                                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                                                            <i data-lucide="phone" class="w-3 h-3 text-gray-400"></i> ${c.telefono}
-                                                        </div>
-                                                    </div>
+                                                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-[10px] font-black text-gray-500 shadow-inner group-hover:from-primary-50 group-hover:to-primary-100 group-hover:text-primary-600 transition-all" title="${item.responsable}">
+                                                    ${Utils.getInitials(item.responsable)}
                                                 </div>
                                             </div>
-                                            <button class="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity btn-delete-contact" data-cid="${c.id}">
-                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                            </button>
                                         </div>
                                     `).join('')}
-                                    ${(!cliente.contactos || cliente.contactos.length === 0) ? `
-                                        <div class="col-span-2 p-8 border border-dashed rounded-xl text-center text-gray-400">
-                                            No hay contactos registrados adicionales.
-                                        </div>
-                                    ` : ''}
+                                    <button class="w-full py-4 border-2 border-dashed border-gray-200 rounded-3xl text-gray-300 hover:border-primary-200 hover:text-primary-400 hover:bg-white transition-all text-xs font-bold flex items-center justify-center gap-2" onclick="window.CRMModule.showNegocioForm(null, {etapa: '${stage.id}'})">
+                                        <i data-lucide="plus" class="w-4 h-4"></i> Crear Oportunidad
+                                    </button>
+                                </div>
+                                <div class="px-3 text-right">
+                                    <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Capacidad: ${Utils.formatCurrency(total)}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                },
+
+                attachEvents(container, parent) {
+                    const cards = container.querySelectorAll('.kanban-card');
+                    const zones = container.querySelectorAll('.kanban-drop-zone');
+
+                    cards.forEach(card => {
+                        card.addEventListener('dragstart', (e) => {
+                            e.dataTransfer.setData('text/plain', card.dataset.id);
+                            card.classList.add('opacity-40');
+                        });
+                        card.addEventListener('dragend', () => card.classList.remove('opacity-40'));
+                        card.addEventListener('click', () => parent.showNegocioDetail(parseInt(card.dataset.id)));
+                    });
+
+                    zones.forEach(zone => {
+                        zone.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            zone.classList.add('bg-primary-50/50', 'border-primary-200');
+                        });
+                        zone.addEventListener('dragleave', () => {
+                            zone.classList.remove('bg-primary-50/50', 'border-primary-200');
+                        });
+                        zone.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            zone.classList.remove('bg-primary-50/50', 'border-primary-200');
+
+                            const id = parseInt(e.dataTransfer.getData('text/plain'));
+                            const newStage = zone.dataset.stageId;
+
+                            const opp = Store.find('oportunidades', id);
+                            if (opp && opp.etapa !== newStage) {
+                                Store.update('oportunidades', id, { etapa: newStage });
+                                Components.toast(`Negocio movido a ${newStage}`, 'info');
+                                parent.renderCurrentTab();
+                            }
+                        });
+                    });
+                }
+            },
+
+            actividades: {
+                render(container, parent) {
+                    const acts = Store.get('actividades') || [];
+
+                    container.innerHTML = `
+                        <div class="grid grid-cols-12 gap-8">
+                            <div class="col-span-8 flex flex-col gap-6">
+                                <div class="flex items-center justify-between px-2">
+                                    <h3 class="font-black text-gray-900">Historial de Actividad</h3>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-xs btn-ghost active" data-filter="all">Todas</button>
+                                        <button class="btn btn-xs btn-ghost" data-filter="pending">Pendientes</button>
+                                    </div>
+                                </div>
+                                <div class="space-y-4" id="activity-timeline-new">
+                                    ${this.renderTimeline(acts)}
+                                </div>
+                            </div>
+                            
+                            <div class="col-span-4">
+                                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-4">
+                                    <h4 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <i data-lucide="calendar" class="w-4 h-4 text-primary-500"></i> Calendario Fugaz
+                                    </h4>
+                                    <div id="mini-calendar-new">
+                                        ${parent.renderMiniCalendar(acts)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     `;
 
-                case 'negocios':
-                    const oportunidades = Store.filter('oportunidades', o => o.clienteId === id);
-                    return `
-                        <div>
-                            <div class="flex justify-between items-center mb-6">
-                                <h4 class="font-bold text-gray-800">Historial de Negocios Comercial</h4>
-                                <button class="btn btn-sm btn-outline" data-action="new-negocio-from-client" data-client-id="${id}" data-client-name="${cliente.nombre}">
-                                    <i data-lucide="plus" class="w-4 h-4"></i> Nuevo Negocio
-                                </button>
+                    this.attachEvents(container, parent);
+                },
+
+                renderTimeline(acts) {
+                    if (!acts.length) return `<div class="p-12 text-center text-gray-400 bg-white rounded-3xl">No hay actividades registradas.</div>`;
+
+                    const sorted = acts.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+                    return sorted.map(a => `
+                        <div class="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex gap-6 hover:shadow-xl hover:border-primary-100/50 transition-all cursor-pointer group animate-fadeInUp" onclick="window.CRMModule.showActividadForm(${a.id})">
+                            <div class="w-14 h-14 rounded-2xl ${a.completada ? 'bg-emerald-50 text-emerald-600' : 'bg-primary-50/50 text-primary-600'} flex items-center justify-center shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                                <i data-lucide="${a.tipo === 'llamada' ? 'phone' : a.tipo === 'reunion' ? 'users' : 'mail'}" class="w-6 h-6"></i>
                             </div>
-                            <div class="grid grid-cols-1 gap-3">
-                                ${oportunidades.length > 0 ? oportunidades.map(op => `
-                                    <div class="flex items-center gap-4 p-4 border border-gray-100 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer" onclick="CRMModule.showNegocioDetail(${op.id})">
-                                        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                                            <i data-lucide="briefcase"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="font-bold text-gray-900">${op.titulo}</div>
-                                            <div class="text-xs text-gray-500">${Utils.formatDate(op.fechaCierre || new Date())} • Responsable: ${op.responsable}</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="font-black text-gray-900">${Utils.formatCurrency(op.valor)}</div>
-                                            <span class="badge ${op.etapa === 'ganada' ? 'badge-success' : 'badge-primary'} text-[10px] uppercase font-bold tracking-wider">${op.etapa}</span>
-                                        </div>
-                                    </div>
-                                `).join('') : '<div class="text-center py-12 text-gray-400">No hay negocios registrados</div>'}
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">${a.tipo} • ${Utils.formatRelativeTime(a.fecha)}</div>
+                                    <span class="badge ${a.completada ? 'badge-success shadow-sm shadow-emerald-100' : 'badge-warning shadow-sm shadow-amber-100'} text-[9px] uppercase font-black px-3">${a.completada ? 'Completada' : 'Agenda'}</span>
+                                </div>
+                                <h5 class="font-bold text-gray-900 text-base group-hover:text-primary-600 transition-colors">${a.titulo}</h5>
+                                <div class="text-xs text-gray-500 mt-1.5 flex items-center gap-2">
+                                    <span class="font-black text-primary-500">${a.cliente}</span> 
+                                    <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                    <span>Resp: <strong>${a.responsable}</strong></span>
+                                </div>
+                                ${a.resultado ? `<div class="mt-4 p-4 bg-gray-50/80 rounded-2xl text-xs italic text-gray-600 border-l-4 border-primary-300 backdrop-blur-sm">"${a.resultado}"</div>` : ''}
                             </div>
                         </div>
-                    `;
+                    `).join('');
+                },
 
-                case 'ventas':
-                    const vps = Store.filter('ventasPublicas', vp => {
-                        const neg = Store.find('oportunidades', vp.negocioId);
-                        return neg && neg.clienteId === id;
+                attachEvents(container, parent) {
+                    container.querySelectorAll('[data-filter]').forEach(btn => {
+                        btn.onclick = () => {
+                            container.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active', 'bg-gray-100'));
+                            btn.classList.add('active', 'bg-gray-100');
+                            const filter = btn.dataset.filter;
+                            let acts = Store.get('actividades');
+                            if (filter === 'pending') acts = acts.filter(a => !a.completada);
+                            document.getElementById('activity-timeline-new').innerHTML = this.renderTimeline(acts);
+                            if (window.lucide) lucide.createIcons();
+                        };
                     });
-                    return `
-                        <div>
-                            <h4 class="font-bold text-gray-800 mb-6">Ventas Públicas Vinculadas (Licitaciones/CA)</h4>
-                            <div class="grid grid-cols-1 gap-3">
-                                ${vps.length > 0 ? vps.map(vp => `
-                                    <div class="flex items-center gap-4 p-4 border border-gray-100 rounded-2xl hover:border-amber-200 transition-all bg-white shadow-sm">
-                                        <div class="w-12 h-12 rounded-xl ${vp.modalidad === 'Compra Ágil' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'} flex items-center justify-center">
-                                            <i data-lucide="${vp.modalidad === 'Compra Ágil' ? 'zap' : 'landmark'}"></i>
-                                        </div>
-                                        <div class="flex-1">
-                                            <div class="font-bold text-gray-900">${vp.titulo}</div>
-                                            <div class="text-xs text-gray-500">${vp.modalidad} • ${vp.entidad} • ${vp.idPortal || 'N/A'}</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="font-black text-gray-900">${Utils.formatCurrency(vp.monto)}</div>
-                                            <span class="badge badge-${Utils.getStatusColor(vp.estado)} text-[10px] lowercase">${vp.estado}</span>
-                                        </div>
-                                    </div>
-                                `).join('') : '<div class="text-center py-12 text-gray-400">No existen licitaciones vinculadas a este cliente</div>'}
+                }
+            },
+
+            inbox: {
+                render(container, parent) {
+                    const msgs = Store.get('crm_mensajes') || [];
+
+                    container.innerHTML = `
+                        <div class="grid grid-cols-12 gap-0 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" style="height: 700px;">
+                            <div class="col-span-4 border-r border-gray-50 flex flex-col bg-gray-50/30">
+                                <div class="p-6 bg-white border-b border-gray-50">
+                                    <h3 class="font-black text-gray-900 mb-4">Comunicaciones</h3>
+                                    ${Components.searchInput({ placeholder: 'Asunto o email...', id: 'inbox-search-new' })}
+                                </div>
+                                <div class="flex-1 overflow-y-auto custom-scrollbar" id="inbox-msg-list">
+                                    ${this.renderMsgList(msgs)}
+                                </div>
+                            </div>
+                            <div class="col-span-8 flex flex-col bg-white" id="msg-content-new">
+                                <div class="flex-1 flex flex-col items-center justify-center text-gray-400 p-12 text-center opacity-40">
+                                    <i data-lucide="mail-open" class="w-16 h-16 mb-4"></i>
+                                    <h4 class="font-bold">Selecciona una conversación</h4>
+                                    <p class="text-xs">Usa el panel de la izquierda para navegar tus mensajes.</p>
+                                </div>
                             </div>
                         </div>
                     `;
 
-                case 'tickets':
-                    const tickets = (Store.data.servicios?.tickets || []).filter(t => t.clienteId === id);
-                    return `
-                        <div>
-                            <h4 class="font-bold text-gray-800 mb-6">Casos y Tickets de Soporte (Solo Lectura)</h4>
-                            <div class="grid grid-cols-1 gap-4">
-                                ${tickets.length > 0 ? tickets.map(t => `
-                                    <div class="p-5 border border-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-gray-50">
-                                        <div class="flex justify-between items-start mb-4">
+                    this.attachEvents(container, parent);
+                },
+
+                renderMsgList(msgs) {
+                    if (!msgs.length) return `<div class="p-8 text-center text-gray-400 text-xs">Sin mensajes.</div>`;
+
+                    return msgs.map(m => `
+                        <div class="p-5 border-b border-gray-50 cursor-pointer hover:bg-white transition-all msg-item-new ${m.leido ? '' : 'bg-primary-50/30 border-l-4 border-l-primary-500'}" data-id="${m.id}">
+                            <div class="flex justify-between items-start mb-1">
+                                <div class="font-bold text-sm text-gray-900 truncate pr-4">${m.de}</div>
+                                <div class="text-[9px] text-gray-400 font-bold uppercase">${Utils.formatRelativeTime(m.fecha)}</div>
+                            </div>
+                            <div class="text-xs font-black text-primary-600 mb-2 truncate">${m.asunto}</div>
+                            <div class="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">${m.cuerpo}</div>
+                        </div>
+                    `).join('');
+                },
+
+                attachEvents(container, parent) {
+                    container.querySelectorAll('.msg-item-new').forEach(item => {
+                        item.onclick = () => {
+                            const id = parseInt(item.dataset.id);
+                            this.viewMessage(id, container, parent);
+                            container.querySelectorAll('.msg-item-new').forEach(i => i.classList.remove('bg-white', 'shadow-inner'));
+                            item.classList.add('bg-white', 'shadow-inner');
+                        };
+                    });
+
+                    document.getElementById('inbox-search-new')?.addEventListener('input', Utils.debounce((e) => {
+                        const filtered = Utils.search(Store.get('crm_mensajes'), e.target.value, ['asunto', 'de', 'email']);
+                        document.getElementById('inbox-msg-list').innerHTML = this.renderMsgList(filtered);
+                        this.attachEvents(container, parent);
+                    }, 300));
+                },
+
+                viewMessage(id, container, parent) {
+                    const msg = Store.find('crm_mensajes', id);
+                    const viewport = document.getElementById('msg-content-new');
+                    if (!msg || !viewport) return;
+
+                    const opps = Store.get('oportunidades');
+
+                    viewport.innerHTML = `
+                        <div class="flex flex-col h-full animate-fadeIn">
+                             <div class="p-8 border-b border-gray-50">
+                                <div class="flex justify-between items-start mb-6">
+                                    <div>
+                                        <h2 class="text-xl font-black text-gray-900 mb-1">${msg.asunto}</h2>
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center font-black text-sm">
+                                                ${Utils.getInitials(msg.de)}
+                                            </div>
                                             <div>
-                                                <div class="text-[10px] font-black text-primary-500 uppercase tracking-widest mb-1">${t.idDisplay}</div>
-                                                <h5 class="font-bold text-gray-900">${t.asunto}</h5>
+                                                <div class="text-sm font-bold text-gray-800">${msg.de} <span class="text-xs font-normal text-gray-400">&lt;${msg.email}&gt;</span></div>
+                                                <div class="text-[10px] text-gray-400 font-black uppercase">${Utils.formatDate(msg.fecha)} · ${msg.fecha.split(' ')[1] || ''}</div>
                                             </div>
-                                            <span class="badge ${t.prioridad === 'Alta' ? 'badge-error' : 'badge-warning'}">${t.prioridad}</span>
-                                        </div>
-                                        <p class="text-sm text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border-l-2 border-gray-200">${t.descripcion}</p>
-                                        <div class="flex justify-between items-center pt-4 border-t border-gray-50">
-                                            <div class="text-xs text-gray-500 flex items-center gap-2">
-                                                <i data-lucide="user" class="w-3 h-3"></i> Asignado: <strong>${t.asignado}</strong>
-                                            </div>
-                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${t.estado === 'Cerrado' ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'}">
-                                                ${t.estado}
-                                            </span>
                                         </div>
                                     </div>
-                                `).join('') : '<div class="text-center py-12 text-gray-400">No hay tickets de postventa registrados para este cliente</div>'}
-                            </div>
+                                    <div class="flex gap-2">
+                                        <button class="btn btn-sm btn-ghost hover:bg-gray-100"><i data-lucide="reply" class="w-4 h-4"></i></button>
+                                        <button class="btn btn-sm btn-ghost hover:bg-gray-100"><i data-lucide="forward" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                                    <div class="flex-1">
+                                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em] mb-1">Vinculación Comercial</div>
+                                        <div class="flex items-center gap-2">
+                                            <i data-lucide="briefcase" class="w-4 h-4 text-primary-500"></i>
+                                            <select class="bg-transparent border-none text-sm font-bold text-gray-900 focus:ring-0 p-0 cursor-pointer" id="link-inbox-opp-new">
+                                                <option value="">— Sin Vincular —</option>
+                                                ${opps.map(o => `<option value="${o.id}" ${o.id === msg.negocioId ? 'selected' : ''}>${o.titulo}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    ${msg.negocioId ? `
+                                        <button class="btn btn-xs btn-primary bg-primary-50 text-primary-600 border-none hover:bg-primary-100" onclick="window.CRMModule.showNegocioDetail(${msg.negocioId})">
+                                            Ver Negocio <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                             </div>
+
+                             <div class="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
+                                <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed font-medium">
+                                    ${msg.cuerpo.replace(/\n/g, '<br>')}
+                                </div>
+                             </div>
+
+                             <div class="p-6 border-t border-gray-50 bg-gray-50/50 flex justify-end gap-3">
+                                <button class="btn btn-outline border-none bg-white">Ignorar</button>
+                                <button class="btn btn-primary px-10">Responder</button>
+                             </div>
                         </div>
                     `;
-            }
-        };
 
-        const modalHTML = `
-            <div class="animate-fadeIn">
-                <!-- Header Brief -->
-                <div class="flex items-center gap-6 mb-8 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
-                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-primary-200">
-                        ${Utils.getInitials(cliente.nombre)}
-                    </div>
-                    <div>
-                        <h2 class="text-2xl font-black text-gray-900">${cliente.nombre}</h2>
-                        <div class="flex items-center gap-4 mt-1">
-                            <span class="text-sm font-medium text-gray-500 flex items-center gap-1.5 italic">
-                                <i data-lucide="map-pin" class="w-4 h-4"></i> ${cliente.sector}
-                            </span>
-                            <div class="w-1 h-1 rounded-full bg-gray-300"></div>
-                            <span class="text-sm font-bold text-primary-600">${cliente.rut}</span>
+                    if (window.lucide) lucide.createIcons();
+
+                    const sel = document.getElementById('link-inbox-opp-new');
+                    if (sel) {
+                        sel.onchange = (e) => {
+                            const val = e.target.value ? parseInt(e.target.value) : null;
+                            Store.update('crm_mensajes', msg.id, { negocioId: val });
+                            Components.toast('Negocio vinculado con éxito', 'success');
+                            this.render(container, parent); // Refresh module
+                            this.viewMessage(msg.id, container, parent); // Re-open
+                        };
+                    }
+                }
+            }
+        },
+
+        // --- Shared Modals (CRM Core Logic) ---
+
+        /**
+         * Show 360 Client View
+         */
+        showClienteDetail(id) {
+            const client = Store.find('clientes', id);
+            if (!client) return;
+
+            const renderNestedTab = (tab) => {
+                switch (tab) {
+                    case 'info':
+                        return `
+                            <div class="space-y-8 animate-fadeIn">
+                                <div class="grid grid-cols-4 gap-4">
+                                    <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                                        <div class="text-[9px] font-black text-gray-400 uppercase mb-1">RUT Empresa</div>
+                                        <div class="font-bold text-gray-900">${client.rut}</div>
+                                    </div>
+                                    <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                                        <div class="text-[9px] font-black text-gray-400 uppercase mb-1">Industria</div>
+                                        <div class="font-bold text-gray-900">${client.sector}</div>
+                                    </div>
+                                    <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                                        <div class="text-[9px] font-black text-gray-400 uppercase mb-1">Estado</div>
+                                        <span class="badge ${Utils.getStatusColor(client.estado)} mt-1">${client.estado}</span>
+                                    </div>
+                                    <div class="p-5 bg-primary-50 rounded-2xl border border-primary-100">
+                                        <div class="text-[9px] font-black text-primary-400 uppercase mb-1">Ingresos Acumulados</div>
+                                        <div class="font-black text-primary-700">${Utils.formatCurrency(client.valor)}</div>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                            <i data-lucide="contact" class="w-4 h-4 text-primary-500"></i> Contactos Registrados
+                                        </h4>
+                                        <button class="btn btn-xs btn-primary bg-primary-50 text-primary-600 border-none" onclick="window.CRMModule.showContactForm(${client.id})">
+                                            <i data-lucide="plus" class="w-3 h-3 mr-1"></i> Añadir
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        ${(client.contactos || []).map(c => `
+                                            <div class="p-4 border border-gray-100 rounded-2xl bg-white flex items-center gap-4 group">
+                                                <div class="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 flex items-center justify-center font-bold">
+                                                    ${Utils.getInitials(c.nombre)}
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="font-bold text-gray-900 truncate text-sm">${c.nombre}</div>
+                                                    <div class="text-[10px] text-primary-600 font-black uppercase mb-1">${c.cargo || 'Funcionario'}</div>
+                                                    <div class="text-[10px] text-gray-400 truncate">${c.email}</div>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                        ${(!client.contactos?.length) ? `<div class="col-span-2 text-center py-6 text-gray-400 text-xs italic bg-gray-50/50 rounded-2xl">Solo se registra el contacto principal.</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    case 'negocios':
+                        const myOpps = Store.filter('oportunidades', o => o.clienteId === id);
+                        return `
+                             <div class="space-y-4 animate-fadeIn">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-bold text-gray-900">Oportunidades en Curso</h4>
+                                    <button class="btn btn-xs btn-primary" onclick="Components.modal.closeAll(); window.CRMModule.showNegocioForm(null, { clienteId: ${id} })">Abrir Nuevo</button>
+                                </div>
+                                <div class="flex flex-col gap-3">
+                                    ${myOpps.map(o => `
+                                        <div class="p-4 border border-gray-100 rounded-2xl hover:bg-gray-50 transition-all cursor-pointer flex items-center justify-between" onclick="Components.modal.closeAll(); window.CRMModule.showNegocioDetail(${o.id})">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                    <i data-lucide="briefcase" class="w-5 h-5"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-gray-900 text-sm">${o.titulo}</div>
+                                                    <div class="text-[10px] text-gray-400 font-bold uppercase">${o.etapa} · Cierre: ${o.fechaCierre || 'Pendiente'}</div>
+                                                </div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="font-black text-gray-900 text-sm">${Utils.formatCurrency(o.valor)}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                    ${!myOpps.length ? `<div class="py-20 text-center text-gray-400 text-xs">Sin registros históricos de negocios.</div>` : ''}
+                                </div>
+                             </div>
+                        `;
+                    default: return `<div class="py-20 text-center text-gray-400">Próximamente integración completa con otros módulos.</div>`;
+                }
+            };
+
+            const { modal } = Components.modal({
+                title: 'Perfil 360° del Cliente',
+                size: 'xl',
+                content: `
+                    <div class="flex flex-col gap-8 -mt-2">
+                        <div class="flex items-center gap-6 p-6 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                            <div class="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-primary-200">
+                                ${Utils.getInitials(client.nombre)}
+                            </div>
+                            <div class="flex-1">
+                                <div class="text-[11px] font-black text-primary-500 uppercase tracking-[0.2em] mb-1">Cliente Corporativo</div>
+                                <h1 class="text-3xl font-black text-gray-900 tracking-tight">${client.nombre}</h1>
+                                <div class="flex items-center gap-4 mt-2">
+                                     <div class="flex items-center gap-1.5 text-xs text-gray-500 font-bold bg-gray-100 px-3 py-1 rounded-full uppercase">
+                                        <i data-lucide="user" class="w-3.5 h-3.5"></i> ${client.contacto}
+                                    </div>
+                                    <div class="flex items-center gap-1.5 text-xs text-primary-600 font-bold bg-primary-50 px-3 py-1 rounded-full uppercase">
+                                        <i data-lucide="mail" class="w-3.5 h-3.5"></i> ${client.email}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-1 bg-gray-100 p-1.5 rounded-2xl w-fit mx-auto">
+                            <button class="px-8 py-2.5 rounded-xl text-xs font-black transition-all detail-nav active" data-tab="info">Información General</button>
+                            <button class="px-8 py-2.5 rounded-xl text-xs font-black transition-all detail-nav" data-tab="negocios">Pipeline & Negocios</button>
+                            <button class="px-8 py-2.5 rounded-xl text-xs font-black transition-all detail-nav" data-tab="servicios">Servicios & Soporte</button>
+                            <button class="px-8 py-2.5 rounded-xl text-xs font-black transition-all detail-nav" data-tab="ventas">Ventas Públicas</button>
+                        </div>
+
+                        <div id="nested-client-viewport" class="min-h-[400px]">
+                            ${renderNestedTab('info')}
                         </div>
                     </div>
-                </div>
-
-                <!-- Tabs -->
-                <div class="flex gap-1 bg-gray-100 p-1.5 rounded-2xl mb-8 w-fit mx-auto">
-                    <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn active" data-tab="info">
-                        Información General
-                    </button>
-                    <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="negocios">
-                        Negocios
-                    </button>
-                    <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="ventas">
-                        Ventas Públicas
-                    </button>
-                    <button class="px-6 py-2.5 rounded-xl text-sm font-black transition-all detail-tab-btn" data-tab="tickets">
-                        Postventa
-                    </button>
-                </div>
-
-                <!-- Tab Content -->
-                <div id="detail-tab-content" class="min-h-[400px]">
-                    ${renderDetailContent('info')}
-                </div>
-            </div>
-        `;
-
-        const { modal, close } = Components.modal({
-            title: 'Expediente 360 del Cliente',
-            size: 'xl',
-            content: modalHTML
-        });
-
-        if (window.lucide) lucide.createIcons();
-
-        // Handle Detail Tabs
-        modal.querySelectorAll('.detail-tab-btn').forEach(btn => {
-            btn.onclick = () => {
-                modal.querySelectorAll('.detail-tab-btn').forEach(b => b.classList.remove('active', 'bg-white', 'shadow-sm', 'text-primary-600'));
-                btn.classList.add('active', 'bg-white', 'shadow-sm', 'text-primary-600');
-                activeDetailTab = btn.dataset.tab;
-                modal.querySelector('#detail-tab-content').innerHTML = renderDetailContent(activeDetailTab);
-                if (window.lucide) lucide.createIcons();
-                this._attachDetailEvents(modal, id, renderDetailContent, activeDetailTab);
-            };
-        });
-
-        // Add specific styles for internal tabs if not exist
-        if (!document.getElementById('detail-tabs-styles')) {
-            const style = document.createElement('style');
-            style.id = 'detail-tabs-styles';
-            style.innerHTML = `
-                .detail-tab-btn { color: #64748b; }
-                .detail-tab-btn.active { color: var(--color-primary-600); }
-            `;
-            document.head.appendChild(style);
-        }
-
-        this._attachDetailEvents(modal, id, renderDetailContent, activeDetailTab);
-    },
-
-    _attachDetailEvents(modal, clientId, renderContent, currentTab) {
-        // Business Action
-        modal.querySelector('[data-action="new-negocio-from-client"]')?.onclick = (e) => {
-            const clienteId = parseInt(e.currentTarget.dataset.clientId);
-            const clienteName = e.currentTarget.dataset.clientName;
-            // close current modal? The requirement doesn't specify, but usually yes to go to form
-            // For now let's use the provided logic
-            const currentClose = modal.querySelector('.modal-close');
-            if (currentClose) currentClose.click();
-            this.showOportunidadForm(null, { clienteId, cliente: clienteName });
-        };
-
-        // Add Contact
-        modal.querySelector('#btn-add-contact')?.onclick = () => {
-            const { modal: cModal, close: cClose } = Components.modal({
-                title: 'Nuevo Contacto',
-                size: 'md',
-                content: `
-                    <form id="new-contact-form" class="space-y-4">
-                        ${Components.formInput({ label: 'Nombre Completo', name: 'nombre', required: true })}
-                        ${Components.formInput({ label: 'Cargo', name: 'cargo' })}
-                        ${Components.formInput({ label: 'Email', name: 'email', type: 'email', required: true })}
-                        ${Components.formInput({ label: 'Teléfono', name: 'telefono' })}
-                    </form>
-                `,
-                footer: `
-                    <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                    <button class="btn btn-primary" data-action="save">Guardar Contacto</button>
                 `
             });
 
-            cModal.querySelector('[data-action="cancel"]').onclick = cClose;
-            cModal.querySelector('[data-action="save"]').onclick = () => {
-                const form = cModal.querySelector('#new-contact-form');
-                if (!form.checkValidity()) { form.reportValidity(); return; }
+            if (window.lucide) lucide.createIcons();
 
-                const formData = new FormData(form);
-                const newContact = Object.fromEntries(formData.entries());
-                newContact.id = Date.now();
-
-                const cliente = Store.find('clientes', clientId);
-                if (!cliente.contactos) cliente.contactos = [];
-                cliente.contactos.push(newContact);
-                Store.update('clientes', clientId, { contactos: cliente.contactos });
-
-                cClose();
-                Components.toast('Contacto agregado con éxito', 'success');
-                // Refresh content if still on info tab
-                if (currentTab === 'info') {
-                    modal.querySelector('#detail-tab-content').innerHTML = renderContent('info');
+            modal.querySelectorAll('.detail-nav').forEach(btn => {
+                btn.onclick = () => {
+                    modal.querySelectorAll('.detail-nav').forEach(b => b.classList.remove('active', 'bg-white', 'shadow-sm', 'text-primary-600'));
+                    btn.classList.add('active', 'bg-white', 'shadow-sm', 'text-primary-600');
+                    modal.querySelector('#nested-client-viewport').innerHTML = renderNestedTab(btn.dataset.tab);
                     if (window.lucide) lucide.createIcons();
-                    this._attachDetailEvents(modal, clientId, renderContent, 'info');
-                }
-            };
-        };
+                };
+            });
+            // Add specific styles for internal tabs if not exist
+            if (!document.getElementById('crm-nested-styles')) {
+                const style = document.createElement('style');
+                style.id = 'crm-nested-styles';
+                style.innerHTML = `
+                    .detail-nav { color: #64748b; }
+                    .detail-nav.active { color: var(--color-primary-600); }
+                `;
+                document.head.appendChild(style);
+            }
+        },
 
-        // Delete Contact
-        modal.querySelectorAll('.btn-delete-contact').forEach(btn => {
-            btn.onclick = async () => {
-                const confirmed = await Components.confirm({
-                    title: 'Eliminar Contacto',
-                    message: '¿Está seguro de eliminar este contacto de la empresa?'
-                });
-                if (confirmed) {
-                    const cid = parseInt(btn.dataset.cid);
-                    const cliente = Store.find('clientes', clientId);
-                    cliente.contactos = cliente.contactos.filter(c => c.id !== cid);
-                    Store.update('clientes', clientId, { contactos: cliente.contactos });
+        /**
+         * Show Oportunidad / Negocio detail modal
+         */
+        showNegocioDetail(id) {
+            const opp = Store.find('oportunidades', id);
+            if (!opp) return;
 
-                    modal.querySelector('#detail-tab-content').innerHTML = renderContent('info');
-                    if (window.lucide) lucide.createIcons();
-                    this._attachDetailEvents(modal, clientId, renderContent, 'info');
-                }
-            };
-        });
-    },
+            const activities = Store.filter('actividades', a => a.oportunidadId === id);
+            const emails = Store.filter('crm_mensajes', m => m.negocioId === id);
+            const timeline = [...activities.map(a => ({ ...a, typeLabel: 'Actividad' })), ...emails.map(e => ({ ...e, typeLabel: 'Correo', titulo: e.asunto }))]
+                .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-    renderInbox(container) {
-        const mensajes = Store.get('crm_mensajes') || [];
-        const negocios = Store.get('oportunidades') || [];
-
-        container.innerHTML = `
-            <div class="grid grid-cols-12 gap-0 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden animate-fadeIn" style="height: 700px;">
-                <!-- Sidebar Mensajes -->
-                <div class="col-span-4 border-r border-gray-100 flex flex-col bg-gray-50/50">
-                    <div class="p-6 border-b border-gray-100 bg-white">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="font-black text-gray-900">Bandeja de Entrada</h3>
-                            <button class="btn btn-icon btn-ghost" title="Actualizar">
-                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                        ${Components.searchInput({ placeholder: 'Buscar en correos...', id: 'search-inbox' })}
-                    </div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar" id="inbox-list">
-                        ${mensajes.length > 0 ? mensajes.map(m => `
-                            <div class="p-5 border-b border-gray-100 cursor-pointer hover:bg-white transition-all msg-item ${m.leido ? 'opacity-80' : 'bg-primary-50/50 border-l-4 border-l-primary-500'}" data-id="${m.id}">
-                                <div class="flex justify-between items-start mb-1">
-                                    <div class="font-bold text-gray-900 truncate pr-2">${m.de}</div>
-                                    <div class="text-[10px] text-gray-400 font-bold whitespace-nowrap">${Utils.formatRelativeTime(m.fecha)}</div>
-                                </div>
-                                <div class="text-xs font-black text-primary-600 mb-2 truncate">${m.asunto}</div>
-                                <div class="text-xs text-secondary line-clamp-2">${m.cuerpo}</div>
-                                ${m.negocioId ? `
-                                    <div class="mt-3 flex items-center gap-1.5">
-                                        <span class="px-2 py-0.5 rounded bg-gray-200 text-[9px] font-black text-gray-600 uppercase tracking-tighter flex items-center gap-1">
-                                            <i data-lucide="briefcase" class="w-2.5 h-2.5"></i> ${negocios.find(n => n.id === m.negocioId)?.titulo || 'Negocio'}
-                                        </span>
+            const { modal } = Components.modal({
+                title: 'Ficha de Oportunidad Comercial',
+                size: 'xl',
+                content: `
+                    <div class="flex flex-col gap-0 -m-6 h-[80vh] bg-gray-50/50">
+                         <div class="bg-white p-8 border-b border-gray-100 shadow-sm flex justify-between items-end">
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-200">
+                                        <i data-lucide="briefcase" class="w-7 h-7"></i>
                                     </div>
-                                ` : ''}
-                            </div>
-                        `).join('') : '<div class="p-12 text-center text-gray-400">No hay mensajes.</div>'}
-                    </div>
-                </div>
-
-                <!-- Contenido Mensaje -->
-                <div class="col-span-8 flex flex-col bg-white" id="message-view">
-                    <div class="flex-1 flex flex-col items-center justify-center text-gray-400 p-12 text-center">
-                        <div class="w-24 h-24 rounded-full bg-gray-50 flex items-center justify-center mb-6">
-                            <i data-lucide="mail-open" class="w-10 h-10 opacity-20"></i>
-                        </div>
-                        <h4 class="text-lg font-bold text-gray-900 mb-2">Selecciona una comunicación</h4>
-                        <p class="text-sm max-w-xs">Haz clic en un mensaje de la lista para ver el historial completo y gestionar la asociación.</p>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        this.attachInboxEvents(container);
-    },
-
-    attachInboxEvents(container) {
-        if (window.lucide) lucide.createIcons();
-
-        container.querySelectorAll('.msg-item').forEach(item => {
-            item.onclick = () => {
-                const msgId = parseInt(item.dataset.id);
-                this.viewMessage(msgId);
-                container.querySelectorAll('.msg-item').forEach(i => i.classList.remove('bg-white', 'shadow-inner'));
-                item.classList.add('bg-white', 'shadow-inner');
-            };
-        });
-    },
-
-    viewMessage(id) {
-        const msg = Store.find('crm_mensajes', id);
-        const container = document.getElementById('message-view');
-        if (!container || !msg) return;
-
-        const negocios = Store.get('oportunidades');
-
-        container.innerHTML = `
-            <div class="flex flex-col h-full animate-fadeIn">
-                <!-- Message Header -->
-                <div class="p-8 border-b border-gray-100 bg-white">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <h2 class="text-xl font-black text-gray-900 mb-1">${msg.asunto}</h2>
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-lg bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-xs">
-                                    ${Utils.getInitials(msg.de)}
-                                </div>
-                                <div>
-                                    <div class="text-sm font-bold text-gray-800">${msg.de} <span class="text-xs text-gray-400 font-normal">&lt;${msg.email}&gt;</span></div>
-                                    <div class="text-[10px] text-gray-400 font-bold uppercase">${Utils.formatDate(msg.fecha)} • ${msg.fecha.split(' ')[1]}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-2">
-                            <button class="btn btn-sm btn-ghost" title="Responder">
-                                <i data-lucide="reply" class="w-4 h-4"></i>
-                            </button>
-                            <button class="btn btn-sm btn-ghost" title="Reenviar">
-                                <i data-lucide="forward" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                        <div class="flex-1">
-                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Negocio Vinculado</div>
-                            <div class="flex items-center gap-2">
-                                <i data-lucide="briefcase" class="w-4 h-4 text-primary-500"></i>
-                                <select class="bg-transparent border-none text-sm font-bold text-gray-900 focus:ring-0 cursor-pointer p-0" id="link-negocio-msg">
-                                    <option value="">— Sin vincular —</option>
-                                    ${negocios.map(n => `<option value="${n.id}" ${n.id === msg.negocioId ? 'selected' : ''}>${n.titulo}</option>`).join('')}
-                                </select>
-                            </div>
-                        </div>
-                        ${msg.negocioId ? `
-                            <button class="btn btn-xs btn-primary bg-primary-50 text-primary-600 border-none hover:bg-primary-100" onclick="CRMModule.showNegocioDetail(${msg.negocioId})">
-                                Ver Negocio <i data-lucide="external-link" class="w-3 h-3 ml-1"></i>
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-
-                <!-- Message Body -->
-                <div class="flex-1 p-8 overflow-y-auto custom-scrollbar bg-white">
-                    <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-                        ${msg.cuerpo.replace(/\n/g, '<br>')}
-                    </div>
-                </div>
-
-                <!-- Message Footer (Actions) -->
-                <div class="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                    <button class="btn btn-outline">Archivar</button>
-                    <button class="btn btn-primary px-8">Responder</button>
-                </div>
-            </div>
-        `;
-
-        if (window.lucide) lucide.createIcons();
-
-        // Handle Linking
-        const select = document.getElementById('link-negocio-msg');
-        if (select) {
-            select.onchange = (e) => {
-                const val = e.target.value ? parseInt(e.target.value) : null;
-                Store.update('crm_mensajes', msg.id, { negocioId: val });
-                Components.toast('Vinculación actualizada', 'success');
-                // Re-render inbox to show changes
-                this.renderInbox(document.getElementById('crm-content'));
-                this.viewMessage(msg.id);
-            };
-        }
-    },
-
-    showNegocioDetail(id) {
-        const negocio = Store.find('oportunidades', id);
-        if (!negocio) return;
-
-        let activeTab = 'actividades';
-
-        const renderHistory = () => {
-            const actividades = Store.filter('actividades', a => a.oportunidadId === id).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-            const correos = Store.filter('crm_mensajes', m => m.negocioId === id).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            // Merge and sort all interactions
-            const interactions = [
-                ...actividades.map(a => ({ ...a, interactionType: 'activity' })),
-                ...correos.map(m => ({ ...m, interactionType: 'email' }))
-            ].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-            if (interactions.length === 0) return `
-                <div class="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
-                    <i data-lucide="history" class="w-16 h-16 mb-4"></i>
-                    <p class="font-bold">No hay actividad registrada aún</p>
-                    <p class="text-xs">Usa los botones superiores para registrar llamadas o correos.</p>
-                </div>
-            `;
-
-            return `
-                <div class="relative pl-8 border-l-2 border-gray-100 space-y-8 mt-4">
-                    ${interactions.map(item => {
-                if (item.interactionType === 'activity') {
-                    const icon = item.tipo === 'llamada' ? 'phone' : item.tipo === 'reunion' ? 'users' : 'calendar';
-                    return `
-                                <div class="relative">
-                                    <div class="absolute -left-[41px] top-0 w-8 h-8 rounded-full bg-white border-2 border-primary-500 flex items-center justify-center text-primary-500 shadow-sm z-10">
-                                        <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
+                                    <div>
+                                        <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pipeline Comercial</div>
+                                        <h2 class="text-3xl font-black text-gray-900 tracking-tight">${opp.titulo}</h2>
                                     </div>
-                                    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">${item.tipo} • ${Utils.formatRelativeTime(item.fecha)}</div>
-                                                <h5 class="font-bold text-gray-900">${item.titulo}</h5>
+                                </div>
+                                <div class="flex items-center gap-8">
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-black text-gray-400 uppercase mb-1">Empresa</span>
+                                        <span class="text-sm font-bold text-gray-700">${opp.cliente}</span>
+                                    </div>
+                                    <div class="w-px h-8 bg-gray-100"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-black text-gray-400 uppercase mb-1">Valor Estimado</span>
+                                        <span class="text-sm font-black text-primary-600">${Utils.formatCurrency(opp.valor)}</span>
+                                    </div>
+                                    <div class="w-px h-8 bg-gray-100"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[9px] font-black text-gray-400 uppercase mb-1">Cierre Proyectado</span>
+                                        <span class="text-sm font-bold text-gray-700">${opp.fechaCierre || 'Sin definir'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn btn-outline border-gray-200" onclick="window.CRMModule.showNegocioForm(${opp.id})"><i data-lucide="edit-3" class="w-4 h-4 mr-2"></i> Editar Negocio</button>
+                                <button class="btn btn-primary px-8 shadow-xl shadow-primary-200">Gestionar Propuesta</button>
+                            </div>
+                         </div>
+
+                         <div class="flex-1 grid grid-cols-12 overflow-hidden">
+                             <div class="col-span-4 border-r border-gray-100 p-8 overflow-y-auto bg-white custom-scrollbar">
+                                <div class="space-y-10">
+                                    <section>
+                                        <h4 class="text-[10px] font-black text-gray-900 uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
+                                            <i data-lucide="info" class="w-3 h-3 text-primary-500"></i> Parámetros de Ventas
+                                        </h4>
+                                        <div class="space-y-4">
+                                             <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+                                                <span class="text-xs font-bold text-gray-500 uppercase">Probabilidad</span>
+                                                <span class="font-black text-gray-900">${opp.probabilidad}%</span>
                                             </div>
-                                            <span class="badge ${item.completada ? 'badge-success' : 'badge-warning'} text-[10px] uppercase">${item.completada ? 'Completado' : 'Pendiente'}</span>
-                                        </div>
-                                        ${item.resultado ? `<div class="bg-gray-50 p-4 rounded-2xl text-sm text-gray-600 mt-2 border-l-4 border-primary-200">"${item.resultado}"</div>` : ''}
-                                        <div class="mt-4 flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                            <i data-lucide="user" class="w-3 h-3"></i> RESPONSABLE: ${item.responsable}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                } else {
-                    return `
-                                <div class="relative">
-                                    <div class="absolute -left-[41px] top-0 w-8 h-8 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center text-amber-500 shadow-sm z-10">
-                                        <i data-lucide="mail" class="w-3.5 h-3.5"></i>
-                                    </div>
-                                    <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">CORREO • ${Utils.formatRelativeTime(item.fecha)}</div>
-                                                <h5 class="font-bold text-gray-900">${item.asunto}</h5>
+                                             <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+                                                <span class="text-xs font-bold text-gray-500 uppercase">Responsable</span>
+                                                <span class="font-bold text-gray-900">${opp.responsable}</span>
                                             </div>
-                                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
-                                                ${Utils.getInitials(item.de)}
+                                             <div class="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+                                                <span class="text-xs font-bold text-gray-500 uppercase">Etapa Actual</span>
+                                                <span class="badge ${Utils.getStatusColor(opp.etapa)}">${opp.etapa.toUpperCase()}</span>
                                             </div>
                                         </div>
-                                        <div class="text-sm text-gray-600 line-clamp-3 my-3 leading-relaxed">
-                                            ${item.cuerpo}
-                                        </div>
-                                        <div class="flex justify-between items-center pt-4 border-t border-gray-50">
-                                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">DE: ${item.de}</span>
-                                            <button class="text-xs font-bold text-amber-600 hover:underline" onclick="CRMModule.currentTab='inbox'; CRMModule.render(); CRMModule.viewMessage(${item.id}); Components.modal.closeAll();">Ver correo completo</button>
-                                        </div>
-                                    </div>
+                                    </section>
                                 </div>
-                            `;
-                }
-            }).join('')}
-                </div>
-            `;
-        };
+                             </div>
 
-        const modalHTML = `
-            <div class="flex flex-col h-full bg-gray-50/50 -m-6 animate-fadeIn" style="height: 80vh;">
-                <!-- Modern Header HubSpot Style -->
-                <div class="bg-white p-8 border-b border-gray-100 shadow-sm flex justify-between items-end">
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                                <i data-lucide="briefcase" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <div class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Negocio Comercial</div>
-                                <h2 class="text-2xl font-black text-gray-900">${negocio.titulo}</h2>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Cliente</span>
-                                <span class="text-sm font-bold text-gray-700">${negocio.cliente}</span>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200"></div>
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Valor</span>
-                                <span class="text-sm font-black text-blue-600">${Utils.formatCurrency(negocio.valor)}</span>
-                            </div>
-                            <div class="w-px h-8 bg-gray-200"></div>
-                            <div class="flex flex-col">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Etapa</span>
-                                <span class="badge badge-${Utils.getStatusColor(negocio.etapa)} mt-1">${negocio.etapa.toUpperCase()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button class="btn btn-outline" onclick="CRMModule.showOportunidadForm(${negocio.id})"><i data-lucide="edit-3" class="w-4 h-4 mr-2"></i> Editar</button>
-                        <button class="btn btn-primary shadow-lg shadow-primary-200"><i data-lucide="send" class="w-4 h-4 mr-2"></i> Enviar Cotización</button>
-                    </div>
-                </div>
-
-                <div class="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
-                    <!-- Sidebar Left: Details -->
-                    <div class="col-span-4 border-r border-gray-100 p-8 overflow-y-auto bg-white custom-scrollbar">
-                        <div class="space-y-8">
-                            <section>
-                                <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <i data-lucide="info" class="w-3.5 h-3.5 text-blue-500"></i> Acerca de este negocio
-                                </h4>
-                                <div class="grid grid-cols-1 gap-4">
-                                    ${Components.labelValue({ label: 'Probabilidad', value: `${negocio.probabilidad}%` })}
-                                    ${Components.labelValue({ label: 'Fecha de Cierre', value: Utils.formatDate(negocio.fechaCierre || new Date()) })}
-                                    ${Components.labelValue({ label: 'Propietario', value: negocio.responsable })}
+                             <div class="col-span-8 p-8 overflow-y-auto custom-scrollbar bg-gray-50/20">
+                                <div class="flex items-center justify-between mb-8">
+                                    <h4 class="font-black text-gray-900 text-sm italic uppercase tracking-wider">Historial de Interacciones</h4>
+                                    <button class="btn btn-xs btn-outline bg-white" onclick="window.CRMModule.showActividadForm(null, { oportunidadId: ${opp.id}, cliente: '${opp.cliente.replace(/'/g, "\\'")}' })">
+                                        <i data-lucide="plus" class="w-3 h-3 mr-1"></i> Registrar Hito
+                                    </button>
                                 </div>
-                            </section>
-
-                            <section>
-                                <h4 class="text-[11px] font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <i data-lucide="landmark" class="w-3.5 h-3.5 text-amber-500"></i> Licitaciones Vinculadas
-                                </h4>
-                                ${(() => {
-                const vps = Store.filter('ventasPublicas', vp => vp.negocioId === id);
-                return vps.length > 0 ? vps.map(vp => `
-                                        <div class="p-3 bg-gray-50 rounded-xl border border-gray-100 mb-2">
-                                            <div class="font-bold text-xs text-gray-800 mb-1">${vp.titulo}</div>
-                                            <div class="flex justify-between items-center text-[10px]">
-                                                <span class="text-gray-500">${vp.idPortal || vp.entidad}</span>
-                                                <span class="font-black text-blue-600">${Utils.formatCurrency(vp.monto)}</span>
+                                <div class="relative pl-6 border-l-2 border-gray-100 space-y-6">
+                                    ${timeline.map(item => `
+                                        <div class="relative bg-white p-5 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                                            <div class="absolute -left-[33px] top-4 w-6 h-6 rounded-full bg-white border-2 border-primary-500 flex items-center justify-center text-primary-500 shadow-sm z-10">
+                                                <i data-lucide="${item.typeLabel === 'Actividad' ? 'zap' : 'mail'}" class="w-2.5 h-2.5"></i>
                                             </div>
+                                            <div class="text-[9px] font-black text-gray-400 mb-1 uppercase tracking-widest">${item.typeLabel} • ${Utils.formatRelativeTime(item.fecha)}</div>
+                                            <div class="font-bold text-gray-900 text-sm">${item.titulo}</div>
+                                            ${item.cuerpo || item.resultado ? `<div class="mt-3 text-xs text-gray-500 line-clamp-3 bg-gray-50 p-3 rounded-xl border-l-2 border-gray-200">"${item.cuerpo || item.resultado}"</div>` : ''}
                                         </div>
-                                    `).join('') : '<p class="text-xs text-gray-400 italic">No hay licitaciones vinculadas</p>';
-            })()}
-                            </section>
-                        </div>
-                    </div>
-
-                    <!-- Right Main: Timeline/History -->
-                    <div class="col-span-8 flex flex-col p-8 bg-gray-50/30 overflow-y-auto custom-scrollbar relative">
-                        <!-- Interaction Bar -->
-                        <div class="flex gap-1 bg-white p-1 rounded-2xl shadow-sm mb-8 sticky top-0 z-20 w-fit mx-auto border border-gray-100">
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="phone" class="w-3.5 h-3.5"></i> Llamada
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="mail" class="w-3.5 h-3.5"></i> Correo
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2" onclick="CRMModule.showActividadForm(null, { oportunidadId: ${id}, cliente: '${negocio.cliente.replace(/'/g, "\\'")}' })">
-                                <i data-lucide="users" class="w-3.5 h-3.5"></i> Reunión
-                            </button>
-                            <button class="px-6 py-2 rounded-xl text-xs font-black transition-all hover:bg-gray-50 flex items-center gap-2">
-                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Nota
-                            </button>
-                        </div>
-
-                        <div id="negocio-history">
-                            ${renderHistory()}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const { modal, close } = Components.modal({
-            title: 'Expediente del Negocio',
-            size: 'xl',
-            content: modalHTML
-        });
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-    },
-
-    renderNegocios(container) {
-        const clientes = Store.get('clientes');
-
-        container.innerHTML = `
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex gap-4">
-                    ${Components.searchInput({ placeholder: 'Buscar negocios...', id: 'search-opp' })}
-                    
-                    <div class="relative" style="width: 250px;">
-                        <input type="text" 
-                               class="form-input" 
-                               id="filter-opp-cliente" 
-                               list="clientes-list" 
-                               placeholder="Filtrar por cliente...">
-                        <datalist id="clientes-list">
-                            ${clientes.map(c => `<option value="${c.nombre}">`).join('')}
-                        </datalist>
-                    </div>
-                </div>
-                <button class="btn btn-primary" data-action="new-opp">
-                    <i data-lucide="plus"></i>
-                    Nuevo Negocio
-                </button>
-            </div>
-            
-            <div class="kanban-board">
-                <!-- Content loaded via filterNegocios -->
-            </div>
-        `;
-
-        this.filterNegocios();
-        this.attachOportunidadesEvents();
-    },
-
-    filterNegocios() {
-        const searchTerm = document.getElementById('search-opp')?.value || '';
-        const clienteFilter = document.getElementById('filter-opp-cliente')?.value || '';
-
-        let oportunidades = Store.get('oportunidades');
-
-        if (searchTerm) {
-            oportunidades = Utils.search(oportunidades, searchTerm, ['titulo', 'cliente']);
-        }
-
-        if (clienteFilter) {
-            // Precise match or partial match? Datalist allows free typing, so we might want loose matching or strict.
-            // Usually strict for 'filtering', but user might type 'ABC' for 'Empresa ABC', so includes() is safer UX.
-            oportunidades = oportunidades.filter(o => o.cliente.toLowerCase().includes(clienteFilter.toLowerCase()));
-        }
-
-        const container = document.querySelector('.kanban-board');
-        if (container) this.renderKanbanBoard(container, oportunidades);
-    },
-
-    renderKanbanBoard(container, oportunidades) {
-        const stages = [
-            { id: 'calificacion', name: 'Calificación', color: '#94a3b8' },
-            { id: 'propuesta', name: 'Propuesta', color: '#3b82f6' },
-            { id: 'negociacion', name: 'Negociación', color: '#f59e0b' },
-            { id: 'ganada', name: 'Ganadas', color: '#10b981' },
-            { id: 'perdida', name: 'Perdidas', color: '#ef4444' }
-        ];
-
-        container.innerHTML = stages.map(stage => {
-            const stageOpps = oportunidades.filter(o => o.etapa === stage.id);
-            const stageTotal = stageOpps.reduce((sum, o) => sum + o.valor, 0);
-            return `
-                <div class="kanban-column" data-stage="${stage.id}">
-                    <div class="kanban-column-header">
-                        <div class="kanban-column-title">
-                            <span style="width:12px;height:12px;border-radius:50%;background:${stage.color}"></span>
-                            ${stage.name}
-                            <span class="kanban-column-count">${stageOpps.length}</span>
-                        </div>
-                        <div class="text-xs text-secondary">${Utils.formatCurrency(stageTotal)}</div>
-                    </div>
-                    <div class="kanban-column-body" data-stage="${stage.id}">
-                        ${stageOpps.map(op => `
-                            <div class="kanban-card" draggable="true" data-id="${op.id}">
-                                <div class="kanban-card-title">${op.titulo}</div>
-                                <div class="text-sm text-secondary mb-2">${op.cliente}</div>
-                                <div class="kanban-card-footer">
-                                    <div class="font-semibold">${Utils.formatCurrency(op.valor)}</div>
-                                    <div class="avatar avatar-sm">${Utils.getInitials(op.responsable)}</div>
+                                    `).join('')}
+                                    ${!timeline.length ? `<div class="text-center py-20 text-gray-300 italic text-sm">Sin interacciones registradas aún.</div>` : ''}
                                 </div>
-                            </div>
-                        `).join('')}
+                             </div>
+                         </div>
                     </div>
-                </div>
-            `;
-        }).join('');
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        this.attachDragAndDropEvents();
-    },
-
-    attachOportunidadesEvents() {
-        document.querySelector('[data-action="new-opp"]')?.addEventListener('click', () => {
-            this.showOportunidadForm();
-        });
-
-        document.getElementById('search-opp')?.addEventListener('input', Utils.debounce(() => this.filterNegocios(), 300));
-        // Use input event for real-time filtering with datalist
-        document.getElementById('filter-opp-cliente')?.addEventListener('input', Utils.debounce(() => this.filterNegocios(), 300));
-    },
-
-    attachDragAndDropEvents() {
-        const cards = document.querySelectorAll('.kanban-card');
-        const columns = document.querySelectorAll('.kanban-column-body');
-
-        cards.forEach(card => {
-            card.addEventListener('dragstart', (e) => {
-                card.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', card.dataset.id);
+                `
             });
-            card.addEventListener('dragend', () => card.classList.remove('dragging'));
-            card.addEventListener('click', () => this.showNegocioDetail(parseInt(card.dataset.id)));
-        });
 
-        columns.forEach(column => {
-            column.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                column.style.background = 'var(--color-primary-50)';
-            });
-            column.addEventListener('dragleave', () => column.style.background = '');
-            column.addEventListener('drop', (e) => {
-                e.preventDefault();
-                column.style.background = '';
-                const cardId = parseInt(e.dataTransfer.getData('text/plain'));
-                const newStage = column.dataset.stage;
-                Store.update('oportunidades', cardId, { etapa: newStage });
-                Components.toast(`Negocio movido a ${newStage}`, 'success');
-                this.filterNegocios();
-            });
-        });
-    },
+            if (window.lucide) lucide.createIcons();
+        },
 
-    showOportunidadForm(id = null, defaults = {}) {
-        const oportunidad = id ? Store.find('oportunidades', id) : null;
-        const clientes = Store.get('clientes');
-        const isEdit = !!oportunidad;
+        // --- Form Logic ---
 
-        const formContent = `
-            <form id="opp-form">
-                ${Components.formInput({ label: 'Título del Negocio', name: 'titulo', value: oportunidad?.titulo || '', required: true })}
-                ${Components.formInput({
-            label: 'Cliente',
-            name: 'clienteId',
-            type: 'select',
-            value: oportunidad?.clienteId || defaults.clienteId || '',
-            required: true,
-            options: clientes.map(c => ({ value: c.id, label: c.nombre }))
-        })}
-                <div class="grid grid-cols-2 gap-4">
-                    ${Components.formInput({ label: 'Valor Estimado', name: 'valor', type: 'number', value: oportunidad?.valor || '', required: true })}
-                    ${Components.formInput({ label: 'Probabilidad (%)', name: 'probabilidad', type: 'number', value: oportunidad?.probabilidad || 50 })}
-                    ${Components.formInput({
-            label: 'Etapa',
-            name: 'etapa',
-            type: 'select',
-            value: oportunidad?.etapa || 'calificacion',
-            options: [
-                { value: 'calificacion', label: 'Calificación' },
-                { value: 'propuesta', label: 'Propuesta' },
-                { value: 'negociacion', label: 'Negociación' },
-                { value: 'ganada', label: 'Ganada' },
-                { value: 'perdida', label: 'Perdida' }
-            ]
-        })}
-                    ${Components.formInput({ label: 'Cierre Estimado', name: 'fechaCierre', type: 'date', value: oportunidad?.fechaCierre || '' })}
-                </div>
-                ${Components.formInput({ label: 'Responsable', name: 'responsable', value: oportunidad?.responsable || Store.state.user.name })}
-            </form>
-        `;
+        showClienteForm(id = null) {
+            const data = id ? Store.find('clientes', id) : null;
+            const isEdit = !!data;
 
-        const { modal, close } = Components.modal({
-            title: isEdit ? 'Editar Negocio' : 'Nuevo Negocio',
-            size: 'md',
-            content: formContent,
-            footer: `
-                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                <button class="btn btn-primary" data-action="save">Guardar</button>
-            `
-        });
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        modal.querySelector('[data-action="cancel"]').addEventListener('click', close);
-        modal.querySelector('[data-action="save"]').addEventListener('click', () => {
-            const form = document.getElementById('opp-form');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            data.clienteId = parseInt(data.clienteId);
-            data.valor = parseInt(data.valor);
-            data.probabilidad = parseInt(data.probabilidad);
-            data.cliente = clientes.find(c => c.id === data.clienteId)?.nombre || '';
-
-            if (isEdit) {
-                Store.update('oportunidades', id, data);
-            } else {
-                Store.add('oportunidades', data);
-            }
-
-            Components.toast(`Negocio ${isEdit ? 'actualizado' : 'creado'}`, 'success');
-
-            close();
-            this.renderTab('negocios');
-        });
-    },
-
-    renderActividades(container) {
-        const actividades = Store.get('actividades');
-        // Sort by date desc
-        actividades.sort((a, b) => new Date(b.fecha + 'T' + b.hora) - new Date(a.fecha + 'T' + a.hora));
-
-        container.innerHTML = `
-            <div class="grid grid-cols-3 gap-6">
-                <!-- Activities List -->
-                <div class="card" style="grid-column: span 2;">
-                    <div class="card-header">
-                        <h3 class="card-title">Listado de Actividades</h3>
-                        <div class="flex gap-2">
-                             <select class="form-select status-filter" style="width: auto; padding-right: 30px;">
-                                <option value="all">Todas</option>
-                                <option value="pending">Pendientes</option>
-                                <option value="completed">Realizadas</option>
-                            </select>
-                            <button class="btn btn-primary btn-sm" data-action="new-actividad">
-                                <i data-lucide="plus"></i>
-                                Nueva
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="timeline activity-list">
-                            ${this.renderActivityItems(actividades)}
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Calendar -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Calendario</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        ${this.renderCalendarWidget(actividades)}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        // Event listeners for activities
-        container.querySelector('.status-filter')?.addEventListener('change', (e) => {
-            const val = e.target.value;
-            let filtered = actividades;
-            if (val === 'pending') filtered = actividades.filter(a => !a.completada);
-            if (val === 'completed') filtered = actividades.filter(a => a.completada);
-            container.querySelector('.activity-list').innerHTML = this.renderActivityItems(filtered);
-            if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-
-            // Re-attach click events for edits
-            this.attachActivityItemEvents(container);
-        });
-
-        document.querySelector('[data-action="new-actividad"]')?.addEventListener('click', () => {
-            this.showActividadForm();
-        });
-
-        // Calendar navigation
-        document.querySelector('[data-action="cal-prev"]')?.addEventListener('click', () => {
-            this._calMonth--;
-            if (this._calMonth < 0) { this._calMonth = 11; this._calYear--; }
-            const calBody = document.querySelector('.card-body.p-0');
-            if (calBody) {
-                calBody.innerHTML = this.renderCalendarWidget(Store.get('actividades'));
-                if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-                // Re-attach calendar nav
-                this.renderTab('actividades');
-            }
-        });
-        document.querySelector('[data-action="cal-next"]')?.addEventListener('click', () => {
-            this._calMonth++;
-            if (this._calMonth > 11) { this._calMonth = 0; this._calYear++; }
-            const calBody = document.querySelector('.card-body.p-0');
-            if (calBody) {
-                calBody.innerHTML = this.renderCalendarWidget(Store.get('actividades'));
-                if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-                this.renderTab('actividades');
-            }
-        });
-
-        this.attachActivityItemEvents(container);
-    },
-
-    renderActivityItems(actividades) {
-        if (actividades.length === 0) return '<div class="text-center text-secondary py-4">No hay actividades.</div>';
-
-        return actividades.map(act => `
-            <div class="timeline-item cursor-pointer hover:bg-gray-50 p-2 rounded" data-id="${act.id}" title="Click para ver detalle/editar">
-                <div class="timeline-icon ${act.completada ? 'success' : 'primary'}">
-                    <i data-lucide="${act.tipo === 'llamada' ? 'phone' : act.tipo === 'reunion' ? 'users' : 'mail'}"></i>
-                </div>
-                <div class="timeline-content">
-                    <div class="flex justify-between">
-                        <div class="timeline-title">${act.titulo}</div>
-                        ${act.completada
-                ? '<span class="badge badge-success" style="font-size:10px;">Realizada</span>'
-                : '<span class="badge badge-warning" style="font-size:10px;">Pendiente</span>'}
-                    </div>
-                    <div class="timeline-description">${act.cliente}${act.responsable ? ` · <strong>${act.responsable}</strong>` : ''}</div>
-                    ${act.resultado ? `<div class="text-sm text-gray-600 mt-1 italic">"${act.resultado}"</div>` : ''}
-                    <div class="timeline-time">${Utils.formatDate(act.fecha)} - ${act.hora}</div>
-                </div>
-            </div>
-        `).join('');
-    },
-
-    attachActivityItemEvents(container) {
-        container.querySelectorAll('.timeline-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const id = parseInt(item.dataset.id);
-                this.showActividadForm(id);
-            });
-        });
-    },
-
-    renderCalendarWidget(actividades) {
-        // Use stored calendar state or default to today
-        if (!this._calYear || !this._calMonth && this._calMonth !== 0) {
-            const today = new Date();
-            this._calYear = today.getFullYear();
-            this._calMonth = today.getMonth();
-        }
-        const year = this._calYear;
-        const month = this._calMonth;
-        const today = new Date();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const monthName = new Date(year, month).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
-
-        let html = `
-            <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
-                <button class="btn btn-ghost btn-sm" data-action="cal-prev"><i data-lucide="chevron-left" style="width:16px;height:16px;"></i></button>
-                <span class="font-semibold" style="text-transform:capitalize;">${monthName}</span>
-                <button class="btn btn-ghost btn-sm" data-action="cal-next"><i data-lucide="chevron-right" style="width:16px;height:16px;"></i></button>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.75rem; padding: 0.5rem 0; color: var(--color-text-secondary);">
-                <div>Do</div><div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sa</div>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.875rem;">
-        `;
-
-        for (let i = 0; i < firstDay.getDay(); i++) {
-            html += `<div style="padding: 0.5rem;"></div>`;
-        }
-
-        for (let i = 1; i <= lastDay.getDate(); i++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-            const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-            const hasActivity = actividades.some(a => a.fecha === dateStr);
-            const acts = actividades.filter(a => a.fecha === dateStr);
-            const hasPending = acts.some(a => !a.completada);
-
-            let badgeStyle = 'width: 2rem; height: 2rem; margin: 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 9999px;';
-            let badgeClass = '';
-
-            if (hasActivity) {
-                if (hasPending) {
-                    badgeClass = 'bg-primary-100 text-primary-600 font-bold';
-                } else {
-                    badgeClass = 'bg-success-100 text-success-600';
-                }
-            }
-            if (isToday) {
-                badgeStyle += ' background-color: var(--color-primary-600); color: white; font-weight: bold;';
-            }
-
-            html += `
-                <div style="padding: 0.5rem;">
-                    <div class="${badgeClass}" style="${badgeStyle}">
-                        ${i}
-                    </div>
-                    ${hasActivity ? `<div style="width: 4px; height: 4px; background-color: currentColor; margin: 4px auto 0; border-radius: 50%;"></div>` : ''}
-                </div>
-            `;
-        }
-
-        html += `</div>`;
-        return html;
-    },
-
-    showActividadForm(id = null, defaults = {}) {
-        const actividad = id ? Store.find('actividades', id) : null;
-        const clientes = Store.get('clientes');
-        const empleados = Store.get('empleados') || [];
-        const oportunidades = Store.get('oportunidades') || [];
-        const isEdit = !!actividad;
-
-        // Pre-fill values from defaults or existing actividad
-        const preCliente = actividad?.cliente || defaults.cliente || '';
-        const preOportunidadId = actividad?.oportunidadId || defaults.oportunidadId || '';
-        const preResponsable = actividad?.responsable || defaults.responsable || '';
-        const clienteOpps = preCliente
-            ? oportunidades.filter(o => o.cliente === preCliente)
-            : oportunidades;
-
-        const formContent = `
-            <form id="actividad-form">
-                <input type="hidden" name="oportunidadId" id="actividad-oportunidad-id" value="${preOportunidadId}">
-                ${Components.formInput({
-            label: 'Tipo Actividad',
-            name: 'tipo',
-            type: 'select',
-            required: true,
-            value: actividad?.tipo || 'reunion',
-            options: [
-                { value: 'llamada', label: 'Llamada' },
-                { value: 'reunion', label: 'Reunión' },
-                { value: 'email', label: 'Email' }
-            ]
-        })}
-                ${Components.formInput({ label: 'Asunto / Título', name: 'titulo', value: actividad?.titulo || '', required: true })}
-                <div class="grid grid-cols-2 gap-4">
-                    ${Components.formInput({
-            label: 'Cliente',
-            name: 'cliente',
-            type: 'select',
-            required: true,
-            value: preCliente,
-            options: clientes.map(c => ({ value: c.nombre, label: c.nombre }))
-        })}
-                    ${Components.formInput({
-            label: 'Negocio Vinculado',
-            name: 'negocio_selector',
-            type: 'select',
-            value: preOportunidadId,
-            options: [{ value: '', label: '— Sin vincular —' }, ...clienteOpps.map(o => ({ value: o.id, label: o.titulo }))]
-        })}
-                </div>
-                ${Components.formInput({
-            label: 'Responsable / Encargado',
-            name: 'responsable',
-            type: 'select',
-            required: true,
-            value: preResponsable,
-            options: empleados.map(e => ({ value: e.nombre, label: `${e.nombre} — ${e.cargo}` }))
-        })}
-                <div class="grid grid-cols-2 gap-4">
-                    ${Components.formInput({ label: 'Fecha', name: 'fecha', type: 'date', value: actividad?.fecha || new Date().toISOString().split('T')[0], required: true })}
-                    ${Components.formInput({ label: 'Hora', name: 'hora', type: 'time', value: actividad?.hora || '10:00', required: true })}
-                </div>
-                
-                <div class="mt-4 border-t pt-4">
-                     <label class="flex items-center gap-2 mb-4 cursor-pointer">
-                        <input type="checkbox" name="completada" id="check-completada" ${actividad?.completada ? 'checked' : ''} class="w-4 h-4">
-                        <span class="font-medium">Marcar como Realizada</span>
-                    </label>
-                    
-                    <div id="resultado-container" class="${actividad?.completada ? '' : 'hidden'}">
+            const { modal, close } = Components.modal({
+                title: isEdit ? 'Actualizar Cliente' : 'Nuevo Cliente Corporativo',
+                size: 'lg',
+                content: `
+                    <form id="form-cliente-new" class="grid grid-cols-2 gap-6">
+                        ${Components.formInput({ label: 'Nombre Legal / Empresa', name: 'nombre', value: data?.nombre || '', required: true })}
+                        ${Components.formInput({ label: 'RUT / ID Tax', name: 'rut', value: data?.rut || '', required: true })}
                         ${Components.formInput({
-            label: 'Resultado / Notas de la actividad',
-            name: 'resultado',
-            type: 'textarea',
-            value: actividad?.resultado || '',
-            placeholder: 'Describe el resultado de la reunión o llamada...'
-        })}
+                    label: 'Sector Industrial', name: 'sector', type: 'select', value: data?.sector || '', options: [
+                        { value: 'Tecnología', label: 'Tecnología' },
+                        { value: 'Minería', label: 'Minería' },
+                        { value: 'Construcción', label: 'Construcción' },
+                        { value: 'Salud', label: 'Salud' },
+                        { value: 'Retail', label: 'Retail' }
+                    ]
+                })}
+                        ${Components.formInput({
+                    label: 'Estado Inicial', name: 'estado', type: 'select', value: data?.estado || 'Prospecto', options: [
+                        { value: 'Prospecto', label: 'Prospecto' },
+                        { value: 'Activo', label: 'Activo' },
+                        { value: 'Inactivo', label: 'Inactivo' }
+                    ]
+                })}
+                        ${Components.formInput({ label: 'Contacto Principal', name: 'contacto', value: data?.contacto || '', required: true })}
+                        ${Components.formInput({ label: 'Email Corporativo', name: 'email', type: 'email', value: data?.email || '', required: true })}
+                    </form>
+                `,
+                footer: `
+                    <button class="btn btn-ghost" data-action="cancel">Descartar</button>
+                    <button class="btn btn-primary px-10" data-action="save-client">
+                        <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i> ${isEdit ? 'Refrescar Datos' : 'Registrar Empresa'}
+                    </button>
+                `
+            });
+
+            if (window.lucide) lucide.createIcons();
+
+            modal.querySelector('[data-action="cancel"]').onclick = close;
+            modal.querySelector('[data-action="save-client"]').onclick = () => {
+                const form = document.getElementById('form-cliente-new');
+                if (!form.checkValidity()) return form.reportValidity();
+
+                const payload = Object.fromEntries(new FormData(form).entries());
+                if (isEdit) {
+                    Store.update('clientes', id, payload);
+                    Components.toast('Cliente actualizado', 'success');
+                } else {
+                    Store.add('clientes', { ...payload, valor: 0, oportunidades: 0, contactos: [] });
+                    Components.toast('Nuevo cliente registrado', 'success');
+                }
+                close();
+                this.renderCurrentTab();
+            };
+        },
+
+        showNegocioForm(id = null, defaults = {}) {
+            const data = id ? Store.find('oportunidades', id) : null;
+            const isEdit = !!data;
+            const clients = Store.get('clientes') || [];
+
+            const { modal, close } = Components.modal({
+                title: isEdit ? 'Editar Oportunidad' : 'Nueva Oportunidad Comercial',
+                size: 'md',
+                content: `
+                    <form id="form-negocio-new" class="flex flex-col gap-5">
+                        ${Components.formInput({ label: 'Título descriptivo', name: 'titulo', value: data?.titulo || '', required: true })}
+                        ${Components.formInput({ label: 'Cliente asociado', name: 'clienteId', type: 'select', value: data?.clienteId || defaults.clienteId || '', required: true, options: clients.map(c => ({ value: c.id, label: c.nombre })) })}
+                        <div class="grid grid-cols-2 gap-4">
+                            ${Components.formInput({ label: 'Valor Estimado', name: 'valor', type: 'number', value: data?.valor || '', required: true })}
+                            ${Components.formInput({ label: '% Probabilidad', name: 'probabilidad', type: 'number', value: data?.probabilidad || 50 })}
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                             ${Components.formInput({
+                    label: 'Etapa del Pipeline', name: 'etapa', type: 'select', value: data?.etapa || 'calificacion', options: [
+                        { value: 'calificacion', label: 'Calificación' },
+                        { value: 'propuesta', label: 'Propuesta' },
+                        { value: 'negociacion', label: 'Negociación' },
+                        { value: 'ganada', label: 'Ganada' },
+                        { value: 'perdida', label: 'Perdida' }
+                    ]
+                })}
+                            ${Components.formInput({ label: 'Cierre Proyectado', name: 'fechaCierre', type: 'date', value: data?.fechaCierre || '' })}
+                        </div>
+                        ${Components.formInput({ label: 'Responsable', name: 'responsable', value: data?.responsable || Store.state.user.name })}
+                    </form>
+                 `,
+                footer: `
+                    <button class="btn btn-ghost" data-action="cancel">Cancelar</button>
+                    <button class="btn btn-primary" data-action="save-negocio">Persistir Registro</button>
+                 `
+            });
+
+            if (window.lucide) lucide.createIcons();
+
+            modal.querySelector('[data-action="cancel"]').onclick = close;
+            modal.querySelector('[data-action="save-negocio"]').onclick = () => {
+                const form = document.getElementById('form-negocio-new');
+                if (!form.checkValidity()) return form.reportValidity();
+
+                const payload = Object.fromEntries(new FormData(form).entries());
+                payload.clienteId = parseInt(payload.clienteId);
+                payload.valor = parseFloat(payload.valor);
+                payload.cliente = clients.find(c => c.id === payload.clienteId)?.nombre || '';
+
+                if (isEdit) {
+                    Store.update('oportunidades', id, payload);
+                    Components.toast('Negocio actualizado', 'success');
+                } else {
+                    Store.add('oportunidades', payload);
+                    Components.toast('Nuevo negocio en pipeline', 'success');
+                }
+                close();
+                this.renderCurrentTab();
+            };
+        },
+
+        showActividadForm(id = null, defaults = {}) {
+            const data = id ? Store.find('actividades', id) : null;
+            const isEdit = !!data;
+            const clients = Store.get('clientes') || [];
+
+            const { modal, close } = Components.modal({
+                title: isEdit ? 'Actualizar Hito' : 'Registrar nueva Actividad',
+                size: 'md',
+                content: `
+                    <form id="form-actividad-new" class="flex flex-col gap-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            ${Components.formInput({ label: 'Tipo', name: 'tipo', type: 'select', value: data?.tipo || 'reunion', options: [{ value: 'llamada', label: 'Llamada' }, { value: 'reunion', label: 'Reunión' }, { value: 'email', label: 'Email' }] })}
+                            ${Components.formInput({ label: 'Título / Resumen', name: 'titulo', value: data?.titulo || '', required: true })}
+                        </div>
+                        ${Components.formInput({ label: 'Cliente', name: 'cliente', type: 'select', value: data?.cliente || defaults.cliente || '', options: clients.map(c => ({ value: c.nombre, label: c.nombre })) })}
+                        <div class="grid grid-cols-2 gap-4">
+                            ${Components.formInput({ label: 'Fecha', name: 'fecha', type: 'date', value: data?.fecha || new Date().toISOString().split('T')[0] })}
+                            ${Components.formInput({ label: 'Hora', name: 'hora', type: 'time', value: data?.hora || '09:00' })}
+                        </div>
+                         <label class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl cursor-pointer">
+                            <input type="checkbox" name="completada" ${data?.completada ? 'checked' : ''} class="w-5 h-5 accent-primary-600">
+                            <div class="flex flex-col">
+                                <span class="font-black text-xs text-gray-900 uppercase">Actividad Realizada</span>
+                                <span class="text-[10px] text-gray-400 font-bold">Marcar para habilitar registro de resultados</span>
+                            </div>
+                        </label>
+                        <div id="res-box-new" class="${data?.completada ? '' : 'hidden'}">
+                             ${Components.formInput({ label: 'Acuerdos / Resultados', name: 'resultado', type: 'textarea', value: data?.resultado || '' })}
+                        </div>
+                    </form>
+                 `,
+                footer: `
+                    <button class="btn btn-ghost" data-action="cancel">Cancelar</button>
+                    <button class="btn btn-primary" data-action="save-act">Guardar Actividad</button>
+                 `
+            });
+
+            const chk = modal.querySelector('[name="completada"]');
+            chk.onchange = () => modal.querySelector('#res-box-new').classList.toggle('hidden', !chk.checked);
+
+            modal.querySelector('[data-action="cancel"]').onclick = close;
+            modal.querySelector('[data-action="save-act"]').onclick = () => {
+                const form = document.getElementById('form-actividad-new');
+                if (!form.checkValidity()) return form.reportValidity();
+                const payload = Object.fromEntries(new FormData(form).entries());
+                payload.completada = chk.checked;
+                payload.responsable = Store.state.user.name;
+
+                if (isEdit) {
+                    Store.update('actividades', id, payload);
+                    Components.toast('Actividad actualizada', 'success');
+                } else {
+                    Store.add('actividades', payload);
+                    Components.toast('Actividad agendada', 'success');
+                }
+                close();
+                this.renderCurrentTab();
+            };
+            if (window.lucide) lucide.createIcons();
+        },
+
+        // --- Helper Renderers ---
+
+        renderMiniCalendar(acts) {
+            const year = this._calYear;
+            const month = this._calMonth;
+            const first = new Date(year, month, 1);
+            const last = new Date(year, month + 1, 0);
+            const mName = new Date(year, month).toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+
+            let html = `
+                <div class="flex items-center justify-between mb-4 px-2">
+                    <span class="text-xs font-black uppercase text-gray-400 tracking-tighter">${mName}</span>
+                    <div class="flex gap-1">
+                        <button class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100" id="cal-prev-btn"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+                        <button class="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100" id="cal-next-btn"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
                     </div>
                 </div>
-            </form>
+                <div class="grid grid-cols-7 text-center text-[10px] font-black text-gray-300 mb-2 uppercase">
+                    <div>Do</div><div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sa</div>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center font-bold text-xs" id="cal-grid-new">
+            `;
+
+            for (let i = 0; i < first.getDay(); i++) html += `<div></div>`;
+            for (let i = 1; i <= last.getDate(); i++) {
+                const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const hasAct = acts.some(a => a.fecha === dStr);
+                const isToday = i === new Date().getDate() && month === new Date().getMonth();
+
+                html += `
+                    <div class="relative w-8 h-8 flex items-center justify-center rounded-xl transition-all cursor-default
+                                ${isToday ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'text-gray-600 hover:bg-gray-50'}
+                                ${hasAct && !isToday ? 'border-b-2 border-primary-500' : ''}">
+                        ${i}
+                        ${hasAct && !isToday ? `<div class="absolute bottom-1 w-1 h-1 bg-primary-500 rounded-full"></div>` : ''}
+                    </div>
+                `;
+            }
+            html += `</div>`;
+
+            // Timeout to attach nav events because of string template
+            setTimeout(() => {
+                const prev = document.getElementById('cal-prev-btn');
+                const next = document.getElementById('cal-next-btn');
+                if (prev) prev.onclick = () => { this._calMonth--; if (this._calMonth < 0) { this._calMonth = 11; this._calYear--; } this.renderCurrentTab(); };
+                if (next) next.onclick = () => { this._calMonth++; if (this._calMonth > 11) { this._calMonth = 0; this._calYear++; } this.renderCurrentTab(); };
+            }, 0);
+
+            return html;
+        }
+
+    };
+
+    // Public API
+    window.CRMModule = CRMModule;
+    console.log('CRMModule: Aura Intelligent Hub desplegado con éxito.');
+
+    // Custom Module Styles (Auditoría UI/UX: Añadiendo micro-interacciones faltantes)
+    if (!document.getElementById('crm-v6-styles')) {
+        const style = document.createElement('style');
+        style.id = 'crm-v6-styles';
+        style.innerHTML = `
+            .kanban-card-v6:hover { transform: translateY(-3px) scale(1.01); }
+            .kanban-scroll-area { scrollbar-gutter: stable; }
+            .detail-nav.active { 
+                background: white; 
+                color: var(--color-primary-600); 
+                box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            }
+            .msg-item-new:hover { background-color: white !important; }
+            .msg-item-new.shadow-inner { border-right: 4px solid var(--color-primary-500); }
+            .glass-header { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); }
         `;
-
-        const { modal, close } = Components.modal({
-            title: isEdit ? 'Editar Actividad' : 'Nueva Actividad',
-            size: 'md',
-            content: formContent,
-            footer: `
-                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                <button class="btn btn-primary" data-action="save">Guardar</button>
-            `
-        });
-
-        // Toggle result field logic
-        const checkBox = document.getElementById('check-completada');
-        const resultContainer = document.getElementById('resultado-container');
-        checkBox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                resultContainer.classList.remove('hidden');
-            } else {
-                resultContainer.classList.add('hidden');
-            }
-        });
-
-        // When cliente changes, update negocio dropdown options
-        const clienteSelect = modal.querySelector('[name="cliente"]');
-        const negocioSelect = modal.querySelector('[name="negocio_selector"]');
-        const hiddenOppId = document.getElementById('actividad-oportunidad-id');
-
-        if (clienteSelect && negocioSelect) {
-            clienteSelect.addEventListener('change', () => {
-                const selectedCliente = clienteSelect.value;
-                const filteredOpps = oportunidades.filter(o => o.cliente === selectedCliente);
-                negocioSelect.innerHTML = `<option value="">— Sin vincular —</option>` +
-                    filteredOpps.map(o => `<option value="${o.id}">${o.titulo}</option>`).join('');
-                negocioSelect.value = '';
-                if (hiddenOppId) hiddenOppId.value = '';
-            });
-        }
-
-        // When negocio_selector changes, update hidden oportunidadId
-        if (negocioSelect && hiddenOppId) {
-            negocioSelect.addEventListener('change', () => {
-                hiddenOppId.value = negocioSelect.value;
-            });
-        }
-
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        modal.querySelector('[data-action="cancel"]').addEventListener('click', close);
-        modal.querySelector('[data-action="save"]').addEventListener('click', () => {
-            const form = document.getElementById('actividad-form');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            data.completada = checkBox.checked;
-            // Convert oportunidadId to number if present, otherwise null
-            data.oportunidadId = data.oportunidadId ? parseInt(data.oportunidadId) : null;
-            // Remove the helper selector field (not actual data)
-            delete data.negocio_selector;
-
-            if (isEdit) {
-                Store.update('actividades', id, data);
-            } else {
-                Store.add('actividades', data);
-            }
-
-            Components.toast('Actividad guardada', 'success');
-            close();
-            this.renderTab(this.currentTab);
-        });
+        document.head.appendChild(style);
     }
-};
 
-window.CRMModule = CRMModule;
-console.log('CRMModule: Módulo cargado correctamente y listo.');
+})();

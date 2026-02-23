@@ -245,12 +245,17 @@ const Utils = {
         }
     },
 
-    // Escape HTML to prevent XSS
+    // Escape HTML to prevent XSS and malformed attributes
     escapeHtml(str) {
         if (str == null) return '';
-        const div = document.createElement('div');
-        div.textContent = String(str);
-        return div.innerHTML;
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(str).replace(/[&<>"']/g, m => map[m]);
     },
 
     // Pluralize helper

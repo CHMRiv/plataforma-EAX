@@ -1,5 +1,6 @@
 /* ==========================================================================
-   EAX Platform - Dashboard Module (HubSpot-level)
+   Aura Platform - Dashboard Module (Reworked)
+   Premium Emerald Aesthetic
    ========================================================================== */
 
 const DashboardModule = {
@@ -15,283 +16,207 @@ const DashboardModule = {
         const actividades = Store.get('actividades') || [];
 
         const totalClientes = clientes.length;
-        const oportunidadesAbiertas = oportunidades.filter(o => o.etapa !== 'ganada' && o.etapa !== 'perdida').length;
+        const totalVentas = oportunidades.filter(o => o.etapa === 'ganada').reduce((sum, o) => sum + (o.valor || 0), 0);
         const valorPipeline = oportunidades.filter(o => o.etapa !== 'perdida').reduce((sum, o) => sum + (o.valor || 0), 0);
         const tareasEnProgreso = tareas.filter(t => t.estado === 'in-progress').length;
         const productosStockBajo = productos.filter(p => p.stock <= p.stockMinimo).length;
-        const vpActivas = ventasPublicas.filter(vp => !['Adjudicada', 'No adjudicada', 'Desierta'].includes(vp.estado)).length;
 
         content.innerHTML = `
-            <div class="animate-fadeIn">
-                ${Components.pageHeader({
-            title: 'Dashboard',
-            subtitle: `Buenos días, EAX Admin — ${new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}`,
-            actions: [
-                { label: 'Exportar', icon: 'download', class: 'btn-outline', action: 'export' },
-                { label: 'Actualizar', icon: 'refresh-cw', class: 'btn-primary', action: 'refresh' }
-            ]
-        })}
-
-                <!-- KPI Cards -->
-                <div class="dashboard-kpi-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;">
-                    ${this._kpiCard('users', 'Clientes', totalClientes, '+2 este mes', 'primary', '#3b82f6')}
-                    ${this._kpiCard('target', 'Pipeline', Utils.formatCurrency(valorPipeline), `${oportunidadesAbiertas} negocios abiertos`, 'success', '#10b981')}
-                    ${this._kpiCard('clipboard-list', 'Tareas activas', tareasEnProgreso, 'En progreso', 'warning', '#f59e0b')}
-                    ${this._kpiCard('landmark', 'Ventas Públicas', vpActivas, 'Procesos activos', 'accent', '#8b5cf6')}
-                    ${this._kpiCard('alert-triangle', 'Stock bajo', productosStockBajo, productosStockBajo > 0 ? 'Requiere atención' : 'Dentro de parámetros', 'error', '#f43f5e')}
+            <div class="animate-fade-in">
+                <!-- Welcome Section -->
+                <div class="welcome-section flex justify-between items-center">
+                    <div>
+                        <h1 class="welcome-title">Bienvenido de nuevo, EAX Admin 👋</h1>
+                        <p class="welcome-subtitle">Aquí tienes un resumen de lo que está pasando en la plataforma hoy.</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button class="btn btn-outline" data-action="export">
+                            <i data-lucide="download"></i>
+                            Exportar Informe
+                        </button>
+                        <button class="btn btn-primary" data-action="refresh">
+                            <i data-lucide="plus"></i>
+                            Nueva Cotización
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Main 2-col grid -->
-                <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-bottom:20px;">
-                    <!-- Pipeline Chart -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Pipeline de Ventas</h3>
-                            <a href="#/crm" class="text-sm text-primary" style="font-weight:500;">Ver CRM →</a>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderPipelineStages(oportunidades)}
-                            <div class="mt-6">
-                                <div style="font-weight:600;font-size:13px;color:#64748b;margin-bottom:12px;text-transform:uppercase;letter-spacing:.05em;">Negocios Recientes</div>
-                                ${this.renderRecentOpportunities(oportunidades)}
+                <!-- Dashboard Content Grid -->
+                <div class="dashboard-grid">
+                    
+                    <!-- Top Stats -->
+                    <div class="stats-container">
+                        ${this._statCard('users', 'Clientes Totales', totalClientes, '+12% este mes', 'up')}
+                        ${this._statCard('target', 'Valor de Pipeline', Utils.formatCurrency(valorPipeline), '+5.4% desde ayer', 'up')}
+                        ${this._statCard('ship', 'Importaciones', '14', '-0.3% retraso', 'down')}
+                    </div>
+
+                    <!-- Market/Pipeline Chart Placeholder (Large) -->
+                    <div class="main-chart-container">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Tendencias del Mercado</h3>
+                                <div class="tabs-container">
+                                    <button class="tab-btn active">1 Año</button>
+                                    <button class="tab-btn">6 Meses</button>
+                                    <button class="tab-btn">1 Mes</button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div style="height:300px; background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%); border-radius: 12px; display: flex; align-items: flex-end; padding: 20px; gap: 12px;">
+                                    <!-- Placeholder Bars or simple svg -->
+                                    <svg width="100%" height="200" viewBox="0 0 800 200" preserveAspectRatio="none">
+                                        <path d="M0,150 Q200,50 400,120 T800,80" fill="none" stroke="var(--color-primary-500)" stroke-width="4" stroke-linecap="round" />
+                                        <path d="M0,180 Q250,100 500,160 T800,120" fill="none" stroke="var(--color-secondary-red)" stroke-width="2" stroke-dasharray="5,5" />
+                                    </svg>
+                                </div>
+                                <div class="flex justify-between mt-6">
+                                    <div class="flex gap-4">
+                                        <div class="flex items-center gap-2">
+                                            <div style="width:10px;height:10px;border-radius:50%;background:var(--color-primary-500);"></div>
+                                            <span class="text-sm font-medium">Precio Promedio</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div style="width:10px;height:10px;border-radius:50%;background:var(--color-secondary-red);"></div>
+                                            <span class="text-sm font-medium">Precio Mediano</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs text-secondary font-medium">Actualizado: hace 5 minutos</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right: Tasks -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Mis Tareas</h3>
-                            <a href="#/desarrollo" class="text-sm text-primary" style="font-weight:500;">Ver todo</a>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderRecentTasks(tareas)}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bottom 3-col grid -->
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Actividad Reciente</h3>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderActivityTimeline(actividades)}
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Ventas Públicas</h3>
-                            <a href="#/licitaciones" class="text-sm text-primary" style="font-weight:500;">Ver todas</a>
-                        </div>
-                        <div class="card-body">
-                            ${this.renderVPSummary(ventasPublicas)}
+                    <!-- Lateral Distribution (Small Card) -->
+                    <div class="sidebar-chart-container">
+                        <div class="card h-full">
+                            <div class="card-header">
+                                <h3 class="card-title">Distribución de Activos</h3>
+                            </div>
+                            <div class="card-body flex flex-col items-center">
+                                <div style="position:relative; width:180px; height:180px; margin-bottom:24px;">
+                                    <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
+                                        <circle cx="18" cy="18" r="16" fill="none" stroke="#f1f3f5" stroke-width="4"></circle>
+                                        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--color-primary-500)" stroke-width="4" stroke-dasharray="70, 100"></circle>
+                                    </svg>
+                                    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; font-family:var(--font-family-heading);">70%</div>
+                                </div>
+                                <div class="w-full flex flex-col gap-3">
+                                    ${this._distItem('Comercial', 40, 'var(--color-primary-500)')}
+                                    ${this._distItem('Ventas Públicas', 30, 'var(--color-secondary-orange)')}
+                                    ${this._distItem('Postventa', 20, 'var(--color-secondary-purple)')}
+                                    ${this._distItem('Otros', 10, 'var(--color-secondary-teal)')}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Alertas de Stock</h3>
-                            <a href="#/inventario" class="text-sm text-primary" style="font-weight:500;">Ver inventario</a>
+                    <!-- Bottom Lists -->
+                    <div class="main-chart-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:var(--space-6);">
+                         <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Mis Tareas</h3>
+                                <a href="#/desarrollo" class="text-xs font-bold text-primary">VER TODO</a>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderRecentTasks(tareas)}
+                            </div>
                         </div>
-                        <div class="card-body">
-                            ${this.renderStockAlerts(productos)}
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Alertas de Stock</h3>
+                                <a href="#/inventario" class="text-xs font-bold text-primary">GESTIONAR</a>
+                            </div>
+                            <div class="card-body">
+                                ${this.renderStockAlerts(productos)}
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         `;
 
         if (window.lucide) lucide.createIcons();
         this.attachEvents();
-        this._animateCounters();
     },
 
-    _kpiCard(icon, label, value, sub, type, color) {
-        const colors = {
-            primary: { bg: '#eff6ff', icon: '#3b82f6' },
-            success: { bg: '#ecfdf5', icon: '#10b981' },
-            warning: { bg: '#fffbeb', icon: '#f59e0b' },
-            accent: { bg: '#ede9fe', icon: '#8b5cf6' },
-            error: { bg: '#fff1f2', icon: '#f43f5e' },
-        };
-        const c = colors[type] || colors.primary;
+    _statCard(icon, label, value, trendText, trendDir) {
         return `
-            <div class="card" style="cursor:default;" data-animate-number="${typeof value === 'number' ? value : ''}">
-                <div class="card-body" style="padding:20px;">
-                    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
-                        <div style="width:44px;height:44px;border-radius:12px;background:${c.bg};display:flex;align-items:center;justify-content:center;color:${c.icon};">
-                            <i data-lucide="${icon}" style="width:20px;height:20px;"></i>
-                        </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">${label}</span>
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="${icon}"></i>
                     </div>
-                    <div class="kpi-value" style="font-size:28px;font-weight:800;font-family:'Outfit',sans-serif;color:#0f172a;line-height:1;">${value}</div>
-                    <div style="font-size:13px;font-weight:600;color:#64748b;margin-top:4px;">${label}</div>
-                    <div style="font-size:12px;color:#94a3b8;margin-top:6px;">${sub}</div>
+                </div>
+                <div class="stat-value">${value}</div>
+                <div class="stat-footer stat-trend-${trendDir}">
+                    <i data-lucide="trending-${trendDir === 'up' ? 'up' : 'down'}"></i>
+                    ${trendText}
                 </div>
             </div>
         `;
     },
 
-    _animateCounters() {
-        document.querySelectorAll('.kpi-value').forEach(el => {
-            el.style.animation = 'countUp 0.5s both';
-        });
-    },
-
-    renderPipelineStages(oportunidades) {
-        const stages = [
-            { id: 'calificacion', name: 'Calificación', color: '#94a3b8' },
-            { id: 'propuesta', name: 'Propuesta', color: '#3b82f6' },
-            { id: 'negociacion', name: 'Negociación', color: '#f59e0b' },
-            { id: 'ganada', name: 'Ganadas', color: '#10b981' },
-        ];
-
-        const total = oportunidades.length || 1;
+    _distItem(label, pct, color) {
         return `
-            <div style="display:flex;gap:4px;height:10px;border-radius:10px;overflow:hidden;margin-bottom:16px;">
-                ${stages.map(s => {
-            const count = oportunidades.filter(o => o.etapa === s.id).length;
-            const pct = Math.round((count / total) * 100);
-            return `<div style="flex:${pct || 1};background:${s.color};transition:flex 0.6s ease;" title="${s.name}: ${count}"></div>`;
-        }).join('')}
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-                ${stages.map(s => {
-            const count = oportunidades.filter(o => o.etapa === s.id).length;
-            const value = oportunidades.filter(o => o.etapa === s.id).reduce((sum, o) => sum + (o.valor || 0), 0);
-            return `
-                        <div style="text-align:center;padding:12px;background:#f8fafc;border-radius:10px;">
-                            <div style="font-size:22px;font-weight:800;color:${s.color};">${count}</div>
-                            <div style="font-size:11px;font-weight:600;color:#64748b;margin-top:2px;">${s.name}</div>
-                            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${Utils.formatCurrency(value)}</div>
-                        </div>
-                    `;
-        }).join('')}
+            <div class="flex flex-col gap-1 w-full">
+                <div class="flex justify-between items-center text-xs font-semibold">
+                    <span>${label}</span>
+                    <span class="text-secondary">${pct}%</span>
+                </div>
+                <div style="height:4px; width:100%; background:var(--color-gray-50); border-radius:4px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${color}; border-radius:4px;"></div>
+                </div>
             </div>
         `;
-    },
-
-    renderRecentOpportunities(oportunidades) {
-        const recents = oportunidades.slice(0, 4);
-        if (!recents.length) return `<div style="color:#94a3b8;font-size:13px;text-align:center;padding:16px;">Sin negocios recientes</div>`;
-
-        const statusMap = { calificacion: 'neutral', propuesta: 'info', negociacion: 'warning', ganada: 'success', perdida: 'danger' };
-
-        return `<div style="display:flex;flex-direction:column;gap:8px;">
-            ${recents.map(op => `
-                <div class="list-item-hover" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;" onclick="Router.navigate('/crm')">
-                    <div class="avatar" style="width:36px;height:36px;font-size:13px;">${Utils.getInitials(op.cliente || '?')}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${op.titulo}</div>
-                        <div style="font-size:11px;color:#64748b;">${op.cliente}</div>
-                    </div>
-                    <div style="text-align:right;flex-shrink:0;">
-                        <div style="font-size:13px;font-weight:700;color:#0f172a;">${Utils.formatCurrency(op.valor || 0)}</div>
-                        <span class="badge badge-${statusMap[op.etapa] || 'neutral'} badge-dot" style="margin-top:4px;">${op.etapa}</span>
-                    </div>
-                </div>
-            `).join('')}
-        </div>`;
     },
 
     renderRecentTasks(tareas) {
-        const active = tareas.filter(t => t.estado === 'in-progress' || t.estado === 'todo').slice(0, 6);
-        if (!active.length) return Components.emptyState({ icon: 'check-circle', title: '¡Todo al día!', message: 'No tienes tareas pendientes' });
+        const active = tareas.filter(t => t.estado === 'in-progress' || t.estado === 'todo').slice(0, 4);
+        if (!active.length) return `<p class="text-sm text-secondary text-center">No hay tareas pendientes</p>`;
 
-        const prioColors = { alta: 'danger', media: 'warning', baja: 'neutral' };
-        return `<div style="display:flex;flex-direction:column;gap:6px;">
+        return `<div class="flex flex-col gap-1">
             ${active.map(t => `
-                <div class="list-item-hover" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;" onclick="Router.navigate('/desarrollo')">
-                    <div style="width:8px;height:8px;border-radius:50%;background:${t.prioridad === 'alta' ? '#f43f5e' : t.prioridad === 'media' ? '#f59e0b' : '#94a3b8'};flex-shrink:0;"></div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:500;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.titulo}</div>
-                        <div style="font-size:11px;color:#64748b;">${t.proyecto || 'Sin proyecto'}</div>
+                <div class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+                    <div style="width:10px;height:10px;border-radius:50%;background:${t.prioridad === 'alta' ? 'var(--color-secondary-red)' : 'var(--color-primary-500)'};"></div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">${t.titulo}</div>
+                        <div class="text-xs text-secondary">${t.proyecto || 'General'}</div>
                     </div>
-                    <span class="badge badge-${prioColors[t.prioridad] || 'neutral'}">${t.prioridad || 'normal'}</span>
-                </div>
-            `).join('')}
-        </div>`;
-    },
-
-    renderActivityTimeline(actividades) {
-        const feed = [
-            { icon: 'check-circle', color: '#10b981', bg: '#ecfdf5', title: 'Cotización aprobada', desc: 'COT-001 – Empresa ABC', time: 'Hace 2h' },
-            { icon: 'user-plus', color: '#3b82f6', bg: '#eff6ff', title: 'Nuevo cliente', desc: 'Tech Solutions SpA', time: 'Hace 4h' },
-            { icon: 'package', color: '#8b5cf6', bg: '#ede9fe', title: 'Stock actualizado', desc: 'Motor 5HP +10 uds', time: 'Hace 6h' },
-            { icon: 'landmark', color: '#f59e0b', bg: '#fffbeb', title: 'Nueva licitación ID', desc: 'Mercado Público #4521', time: 'Ayer' },
-            { icon: 'message-square', color: '#06b6d4', bg: '#ecfeff', title: 'Nuevo mensaje', desc: 'Canal General', time: 'Ayer' },
-        ];
-        return `<div style="display:flex;flex-direction:column;gap:0;">
-            ${feed.map((a, i) => `
-                <div style="display:flex;gap:12px;padding:12px 0;${i < feed.length - 1 ? 'border-bottom:1px solid #f1f5f9;' : ''}">
-                    <div style="width:36px;height:36px;border-radius:50%;background:${a.bg};display:flex;align-items:center;justify-content:center;color:${a.color};flex-shrink:0;">
-                        <i data-lucide="${a.icon}" style="width:16px;height:16px;"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div style="font-size:13px;font-weight:600;color:#1e293b;">${a.title}</div>
-                        <div style="font-size:12px;color:#64748b;">${a.desc}</div>
-                        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${a.time}</div>
-                    </div>
+                    <i data-lucide="chevron-right" class="text-gray-300 w-4 h-4"></i>
                 </div>
             `).join('')}
         </div>`;
     },
 
     renderStockAlerts(productos) {
-        const low = productos.filter(p => p.stock <= p.stockMinimo);
-        if (!low.length) return Components.emptyState({ icon: 'check-circle', title: 'Stock OK', message: 'Todos los productos están dentro del mínimo' });
+        const low = productos.filter(p => p.stock <= p.stockMinimo).slice(0, 4);
+        if (!low.length) return `<p class="text-sm text-secondary text-center">Stock bajo control</p>`;
 
-        return `<div style="display:flex;flex-direction:column;gap:8px;">
+        return `<div class="flex flex-col gap-1">
             ${low.map(p => `
-                <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#fff1f2;cursor:pointer;" onclick="Router.navigate('/inventario')">
-                    <div style="width:36px;height:36px;background:#ffe4e6;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#f43f5e;">
-                        <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+                <div class="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+                    <div class="avatar-sm" style="background:var(--color-error-50); color:var(--color-error-600); border-radius:8px;">
+                        <i data-lucide="alert-circle" width="16"></i>
                     </div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.nombre}</div>
-                        <div style="font-size:11px;color:#64748b;">SKU: ${p.sku || '—'}</div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">${p.nombre}</div>
+                        <div class="text-xs text-secondary">${p.stock} unidades en stock</div>
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:14px;font-weight:700;color:#f43f5e;">${p.stock} uds</div>
-                        <div style="font-size:11px;color:#94a3b8;">Mín: ${p.stockMinimo}</div>
-                    </div>
+                    <span class="badge badge-danger">Crítico</span>
                 </div>
             `).join('')}
         </div>`;
     },
 
-    renderVPSummary(ventasPublicas) {
-        const active = ventasPublicas.filter(vp => !['Adjudicada', 'No adjudicada', 'Desierta'].includes(vp.estado));
-        if (!active.length) return Components.emptyState({ icon: 'landmark', title: 'Sin procesos activos', message: 'No hay ventas públicas en curso' });
-
-        const statusMap = { 'Publicada': 'info', 'En evaluación': 'warning', 'Adjudicada': 'success', 'No adjudicada': 'danger' };
-        return `<div style="display:flex;flex-direction:column;gap:8px;">
-            ${active.slice(0, 4).map(vp => {
-            const isCA = vp.modalidad === 'Compra Ágil';
-            return `
-                    <div class="list-item-hover" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;" onclick="Router.navigate('/licitaciones')">
-                        <div style="width:36px;height:36px;border-radius:10px;background:${isCA ? '#fff7ed' : '#eff6ff'};display:flex;align-items:center;justify-content:center;color:${isCA ? '#ea580c' : '#3b82f6'};">
-                            <i data-lucide="${isCA ? 'zap' : 'file-text'}" style="width:16px;height:16px;"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <div style="font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${vp.titulo}</div>
-                            <div style="font-size:11px;color:#64748b;">${vp.entidad || '—'}</div>
-                        </div>
-                        <span class="badge badge-${statusMap[vp.estado] || 'neutral'} badge-dot">${vp.estado}</span>
-                    </div>
-                `;
-        }).join('')}
-        </div>`;
-    },
-
     attachEvents() {
         document.querySelectorAll('[data-action="refresh"]').forEach(btn => {
-            btn.addEventListener('click', () => { Components.toast('Dashboard actualizado', 'success'); DashboardModule.render(); });
+            btn.addEventListener('click', () => { Components.toast('Actualizando datos...', 'success'); this.render(); });
         });
         document.querySelectorAll('[data-action="export"]').forEach(btn => {
-            btn.addEventListener('click', () => Components.toast('Exportando datos...', 'info'));
+            btn.addEventListener('click', () => Components.toast('Generando reporte PDF...', 'info'));
         });
     }
 };

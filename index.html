@@ -27,26 +27,26 @@
 <body class="loading-state">
     <!-- Splash Screen -->
     <div id="splash-screen"
-        style="position:fixed; inset:0; background:#fff; z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; transition: opacity 0.5s ease;">
+        style="position:fixed; inset:0; background:#f8f9fa; z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px; transition: opacity 0.5s ease;">
         <div
-            style="width:120px; height:120px; background:linear-gradient(135deg, #60a5fa, #2563eb); border-radius:30px; display:flex; align-items:center; justify-content:center; color:white; box-shadow:0 20px 50px rgba(37, 99, 235, 0.3);">
-            <svg viewBox="0 0 24 24" width="60" height="60" stroke="currentColor" stroke-width="2" fill="none">
+            style="width:100px; height:100px; background:var(--color-primary-500, #00875a); border-radius:24px; display:flex; align-items:center; justify-content:center; color:white; box-shadow:0 20px 40px rgba(0, 135, 90, 0.2);">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2.5" fill="none">
                 <path d="M12 2l9 4.5V17.5L12 22l-9-4.5V6.5L12 2z" />
             </svg>
         </div>
         <div
-            style="font-family:'Outfit', sans-serif; font-size:24px; font-weight:700; color:#1e293b; letter-spacing:1px;">
+            style="font-family:'Outfit', sans-serif; font-size:28px; font-weight:800; color:#1a1d1f; letter-spacing:-0.02em;">
             AURA PLATFORM</div>
         <div id="splash-status"
-            style="font-family:'Inter', sans-serif; font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:2px;">
-            Cargando sistema...</div>
-        <div style="width:200px; height:4px; background:#f1f5f9; border-radius:10px; overflow:hidden;">
-            <div id="splash-progress" style="width:0%; height:100%; background:#3b82f6; transition:width 0.3s ease;">
+            style="font-family:'Inter', sans-serif; font-size:11px; color:#6f767e; text-transform:uppercase; letter-spacing:0.1em; font-weight:600;">
+            Inicializando sistema emerald...</div>
+        <div style="width:160px; height:4px; background:#e9ecef; border-radius:10px; overflow:hidden;">
+            <div id="splash-progress" style="width:0%; height:100%; background:#00875a; transition:width 0.3s ease;">
             </div>
         </div>
         <button id="bypass-splash"
-            style="margin-top:20px; padding:10px 20px; background:#f1f5f9; border-radius:10px; font-size:12px; display:none;">Forzar
-            entrada</button>
+            style="margin-top:20px; padding:8px 16px; background:#fff; border:1px solid #e9ecef; border-radius:10px; font-size:11px; font-weight:600; color:#6f767e; cursor:pointer; display:none;">FORZAR
+            ACCESO</button>
     </div>
 
 

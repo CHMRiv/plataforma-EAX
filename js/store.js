@@ -123,19 +123,32 @@ const Store = {
             { id: 3, tipo: 'email', titulo: 'Envío cotización', cliente: 'Constructora Delta', oportunidadId: 3, responsable: 'María González', fecha: '2024-01-21', hora: '09:00', completada: true }
         ],
 
-        // Desarrollo - Proyectos y Tareas
+        // Desarrollo - Áreas, Proyectos y Tareas
+        areas: [
+            { id: 1, nombre: 'Interno_EcoAlliance', icono: 'briefcase', color: '#4f46e5' },
+            { id: 2, nombre: 'Cotización y Venta', icono: 'trending-up', color: '#10b981' },
+            { id: 3, nombre: 'Servicios', icono: 'truck', color: '#f59e0b' },
+            { id: 4, nombre: 'Proyectos / Soluciones', icono: 'users', color: '#ef4444' },
+            { id: 5, nombre: 'I+D+i', icono: 'zap', color: '#06b6d4' }
+        ],
+
         proyectos: [
-            { id: 1, nombre: 'Desarrollo Web EAX', descripcion: 'Desarrollo de la plataforma empresarial', estado: 'En progreso', progreso: 65 },
-            { id: 2, nombre: 'App Móvil Clientes', descripcion: 'Aplicación móvil para clientes', estado: 'Planificación', progreso: 15 },
-            { id: 3, nombre: 'Integración API', descripcion: 'Integración con sistemas externos', estado: 'En progreso', progreso: 40 }
+            { id: 1, areaId: 1, nombre: 'Adquisición', estado: 'Activo', progreso: 65 },
+            { id: 2, areaId: 2, nombre: 'Equipos', estado: 'Activo', progreso: 40 },
+            { id: 3, areaId: 3, nombre: 'Mantención', estado: 'En pausa', progreso: 20 },
+            { id: 4, areaId: 5, nombre: 'Fabricacion_Volteadora', estado: 'Activo', progreso: 10 }
         ],
 
         carpetas: [
-            { id: 1, nombre: 'Frontend', proyectoId: 1 },
-            { id: 2, nombre: 'Backend', proyectoId: 1 },
-            { id: 3, nombre: 'DevOps', proyectoId: 1 },
-            { id: 4, nombre: 'Diseño UI/UX', proyectoId: 2 },
-            { id: 5, nombre: 'Desarrollo Nativo', proyectoId: 2 }
+            { id: 1, nombre: 'Interno_Adquisición_Orugas', proyectoId: 1 },
+            { id: 2, nombre: 'Adquisición_Tolva2512', proyectoId: 1 },
+            { id: 3, nombre: 'Repuestos', proyectoId: 2 },
+            { id: 4, nombre: 'Diagnóstico', proyectoId: 3 }
+        ],
+
+        projectRequests: [
+            { id: 50, tipo: 'proyecto', areaId: 1, nombre: 'Nuevo Proyecto Logística', solicitadoPor: 'María González', fecha: '2024-02-23T10:00:00Z', estado: 'pendiente' },
+            { id: 51, tipo: 'subcarpeta', proyectoId: 1, nombre: 'QA - Testing Automático', solicitadoPor: 'Carlos Rodríguez', fecha: '2024-02-23T11:30:00Z', estado: 'pendiente' }
         ],
 
         tareas: [

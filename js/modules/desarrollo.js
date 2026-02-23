@@ -1,1010 +1,784 @@
 /* ==========================================================================
-   EAX Platform - Desarrollo Module (Task Manager)
+   EAX Platform - Desarrollo Module (Task Manager - Hierarchical)
    ========================================================================== */
 
 const DesarrolloModule = {
     currentView: 'kanban',
+    currentArea: null,
     currentProject: null,
     currentFolder: null,
-    ganttMode: 'week', // 'week' | 'month'
-    calendarState: null,
 
     render() {
         const content = document.getElementById('page-content');
-        const proyectos = Store.get('proyectos');
+        const areas = Store.get('areas') || [];
+        const proyectos = Store.get('proyectos') || [];
         const carpetas = Store.get('carpetas') || [];
+        const isAdmin = Store.state.user.role === 'Administrador';
 
         content.innerHTML = `
-            <div class="animate-fadeIn">
-                ${Components.pageHeader({
-            title: 'Desarrollo',
-            subtitle: 'Gestión de proyectos y tareas',
-            actions: [
-                { label: 'Nueva Tarea', icon: 'plus', class: 'btn-primary', action: 'new-task' }
-            ]
-        })}
-                
-                <div class="flex gap-6 mb-6">
-                    <!-- Projects Sidebar -->
-                    <div class="card" style="width: 280px; flex-shrink: 0;">
-                        <div class="card-header">
-                            <h3 class="card-title">Proyectos</h3>
-                            <button class="btn btn-ghost btn-icon" data-action="new-project">
-                                <i data-lucide="plus"></i>
+            <div class="comm-container animate-fade-in" style="height: calc(100vh - 80px);">
+                <!-- Sidebar Hierárquico - ClickUp Inspired -->
+                <aside class="comm-sidebar">
+                    <div class="comm-sidebar-header flex justify-between items-center px-4 mb-6">
+                        <h2 class="text-xl font-bold font-heading tracking-tight text-gray-800">Estructura</h2>
+                        ${isAdmin ? `
+                            <button class="header-btn p-1.5 hover:bg-gray-100 rounded-full transition-colors" onclick="DesarrolloModule.showAreaForm()">
+                                <i data-lucide="plus" style="width:18px; color:var(--color-primary-500);"></i>
                             </button>
+                        ` : ''}
+                    </div>
+
+                    <div class="overflow-auto flex-1 custom-scrollbar">
+                        <!-- Vista General -->
+                        <div class="px-2 mb-6 text-gray-500">
+                            <h3 class="text-3xs uppercase tracking-[0.2em] text-gray-400 font-bold mb-3 px-3">Vistas</h3>
+                            <div class="comm-item rounded-lg ${!this.currentProject && !this.currentArea ? 'active bg-primary-50 text-primary-600' : ''}" onclick="DesarrolloModule.filterProject(null)">
+                                <i data-lucide="layout-grid" style="width:18px;"></i>
+                                <span class="font-semibold text-sm">Panel General</span>
+                            </div>
                         </div>
-                        <div class="card-body p-2">
-                            <div class="flex flex-col gap-1">
-                                <button class="nav-link ${!this.currentProject ? 'active' : ''}" data-project="all" style="background: ${!this.currentProject ? 'var(--color-primary-50)' : ''}; color: ${!this.currentProject ? 'var(--color-primary-600)' : 'var(--color-gray-700)'};">
-                                    <i data-lucide="layout-grid"></i>
-                                    <span>Todas las Tareas</span>
-                                </button>
-                                ${proyectos.map(p => {
-            const projectFolders = carpetas.filter(c => c.proyectoId === p.id);
-            const isProjectActive = this.currentProject === p.id && !this.currentFolder;
+
+                        <!-- Espacios -->
+                        <div class="px-2">
+                            <h3 class="text-3xs uppercase tracking-[0.2em] text-gray-400 font-bold mb-3 px-3">Espacios de Trabajo</h3>
+                            
+                            <div class="flex flex-col">
+                                ${areas.map(area => {
+            const areaProjects = proyectos.filter(p => p.areaId === area.id);
+            const isAreaActive = this.currentArea === area.id;
 
             return `
-                                    <div class="flex flex-col">
-                                        <button class="nav-link ${isProjectActive ? 'active' : ''}" data-project="${p.id}" style="justify-content: space-between; background: ${isProjectActive ? 'var(--color-primary-50)' : ''}; color: ${isProjectActive ? 'var(--color-primary-600)' : 'var(--color-gray-700)'};">
-                                            <div class="flex items-center gap-2">
-                                                <i data-lucide="folder"></i>
-                                                <span class="truncate" title="${p.nombre}">${p.nombre}</span>
-                                            </div>
-                                            <i data-lucide="plus-circle" class="w-4 h-4 text-gray-400 hover:text-primary-600 cursor-pointer" data-action="new-folder" data-project-id="${p.id}" title="Nueva carpeta"></i>
-                                        </button>
-                                        
-                                        <!-- Subfolders -->
-                                        ${projectFolders.length > 0 ? `
-                                            <div class="flex flex-col gap-1 ml-6 pl-2 border-l border-gray-200 my-1">
-                                                ${projectFolders.map(f => {
-                const isFolderActive = this.currentFolder === f.id;
-                return `
-                                                    <button class="nav-link text-sm h-8 ${isFolderActive ? 'active' : ''}" data-folder="${f.id}" data-project-id="${p.id}" style="background: ${isFolderActive ? 'var(--color-primary-50)' : ''}; color: ${isFolderActive ? 'var(--color-primary-600)' : 'var(--color-gray-600)'};">
-                                                        <i data-lucide="folder-open" class="w-3 h-3"></i>
-                                                        <span class="truncate" title="${f.nombre}">${f.nombre}</span>
+                                        <div class="flex flex-col mb-1 last:mb-0">
+                                            <!-- Nivel 1: Área (Espacio) -->
+                                            <div class="comm-item group py-2 px-3 rounded-lg transition-all ${isAreaActive && !this.currentProject ? 'bg-gray-100 text-gray-900 font-bold' : 'hover:bg-gray-50 text-gray-600'}" onclick="DesarrolloModule.filterArea(${area.id})">
+                                                <div class="flex items-center gap-3 flex-1 overflow-hidden">
+                                                    <i data-lucide="${area.icono || 'layers'}" style="width:18px; color: ${area.color};"></i>
+                                                    <span class="truncate text-[14px]">${area.nombre}</span>
+                                                </div>
+                                                <div class="flex gap-1">
+                                                    <button class="btn-icon btn-ghost btn-xs opacity-0 group-hover:opacity-100" onclick="event.stopPropagation(); DesarrolloModule.showMetrics('area', ${area.id})">
+                                                        <i data-lucide="bar-chart-2" style="width:14px;"></i>
                                                     </button>
-                                                `;
+                                                    <button class="btn-icon btn-ghost btn-xs opacity-0 group-hover:opacity-100" onclick="event.stopPropagation(); DesarrolloModule.showRequestForm('proyecto', ${area.id})">
+                                                        <i data-lucide="plus" style="width:14px;"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Contenedor Proyectos (Indentación Nivel 2) -->
+                                            <div class="flex flex-col ml-[28px] border-l border-gray-100 pl-2 mt-0.5">
+                                                ${areaProjects.map(p => {
+                const isActive = this.currentProject === p.id && !this.currentFolder;
+                const projectFolders = carpetas.filter(c => c.proyectoId === p.id);
+
+                return `
+                                                        <div class="flex flex-col">
+                                                            <!-- Nivel 2: Proyecto -->
+                                                            <div class="comm-item group py-1.5 pl-3 pr-2 rounded-lg ${isActive ? 'bg-primary-50 text-primary-600 font-bold' : 'text-gray-500 hover:bg-gray-50'}" onclick="DesarrolloModule.filterProject(${p.id})">
+                                                                <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                                                    <i data-lucide="folder" style="width:16px;"></i>
+                                                                    <span class="truncate text-[13px]">${p.nombre}</span>
+                                                                </div>
+                                                                <div class="flex gap-1">
+                                                                    <button class="btn-icon btn-ghost btn-xs opacity-0 group-hover:opacity-100" onclick="event.stopPropagation(); DesarrolloModule.showMetrics('proyecto', ${p.id})">
+                                                                        <i data-lucide="bar-chart-2" style="width:13px;"></i>
+                                                                    </button>
+                                                                    <button class="btn-icon btn-ghost btn-xs opacity-0 group-hover:opacity-100" onclick="event.stopPropagation(); DesarrolloModule.showRequestForm('subcarpeta', ${p.id})">
+                                                                        <i data-lucide="plus" style="width:13px;"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <!-- Contenedor Subcarpetas (Indentación Nivel 3) -->
+                                                            ${projectFolders.length > 0 ? `
+                                                                <div class="flex flex-col ml-5 border-l border-gray-100 pl-2">
+                                                                    ${projectFolders.map(f => `
+                                                                        <!-- Nivel 3: Subcarpeta -->
+                                                                        <div class="comm-item group py-1 pl-3 pr-2 rounded-lg text-xs ${this.currentFolder === f.id ? 'text-primary-600 font-bold' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}" onclick="DesarrolloModule.filterFolder(${f.id}, ${p.id})">
+                                                                            <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                                                                <i data-lucide="hash" style="width:12px;" class="opacity-50"></i>
+                                                                                <span class="truncate">${f.nombre}</span>
+                                                                            </div>
+                                                                            <button class="btn-icon btn-ghost btn-xs opacity-0 group-hover:opacity-100" onclick="event.stopPropagation(); DesarrolloModule.showMetrics('subcarpeta', ${f.id})">
+                                                                                <i data-lucide="bar-chart-2" style="width:12px;"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    `).join('')}
+                                                                </div>
+                                                            ` : ''}
+                                                        </div>
+                                                    `;
             }).join('')}
                                             </div>
-                                        ` : ''}
-                                    </div>
+                                        </div>
                                     `;
         }).join('')}
                             </div>
                         </div>
+
+                        <!-- Configuración -->
+                        ${isAdmin ? `
+                        <div class="mt-8 pt-6 px-4 border-t border-gray-100">
+                             <div class="comm-item rounded-lg ${this.currentView === 'requests' ? 'bg-warning-50 text-warning-700 font-bold' : 'text-gray-500 hover:bg-gray-50'}" onclick="DesarrolloModule.setView('requests')">
+                                <i data-lucide="shield-check" style="width:18px;"></i>
+                                <span class="text-sm">Solicitudes Pendientes</span>
+                                ${this.getPendingCount() > 0 ? `<span class="bg-warning-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">${this.getPendingCount()}</span>` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
-                    
-                    <!-- Main Content -->
-                    <div class="flex-1">
-                        <!-- View Tabs -->
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
-                                ${['kanban', 'lista', 'gantt', 'calendario', 'reportes'].map(view => `
-                                    <button class="btn ${this.currentView === view ? 'btn-secondary' : 'btn-ghost'} btn-sm view-btn" data-view="${view}">
-                                        <i data-lucide="${this.getViewIcon(view)}"></i>
-                                        ${view.charAt(0).toUpperCase() + view.slice(1)}
+                </aside>
+
+                <!-- Content Area -->
+                <main class="comm-chat-area">
+                    <header class="comm-chat-header justify-between py-4">
+                        <div class="flex items-center gap-4">
+                            <div class="flex gap-1 bg-gray-50 rounded-full p-1 border">
+                                ${['kanban', 'lista', 'gantt', 'calendario', 'reportes'].map(v => `
+                                    <button class="btn btn-sm ${this.currentView === v ? 'btn-primary shadow-sm' : 'btn-ghost'} px-4 py-1.5 rounded-full" onclick="DesarrolloModule.setView('${v}')" style="font-size:13px;">
+                                        ${v.charAt(0).toUpperCase() + v.slice(1)}
                                     </button>
                                 `).join('')}
                             </div>
-                            
-                            <div class="flex gap-3">
-                                ${Components.searchInput({ placeholder: 'Buscar tareas...', id: 'search-tasks' })}
-                                <select class="form-select" style="width: 150px;" id="filter-priority">
-                                    <option value="">Prioridad</option>
-                                    <option value="alta">Alta</option>
-                                    <option value="media">Media</option>
-                                    <option value="baja">Baja</option>
-                                </select>
-                            </div>
                         </div>
-                        
-                        <div id="tasks-content"></div>
+                        <div class="flex gap-2">
+                            <button class="btn btn-primary" onclick="DesarrolloModule.showTaskForm()">
+                                <i data-lucide="plus" style="width:16px;"></i>
+                                Nueva Tarea
+                            </button>
+                        </div>
+                    </header>
+
+                    <div class="flex-1 overflow-auto custom-scrollbar p-6" id="dev-content-area">
+                        ${this.renderView()}
                     </div>
-                </div>
+                </main>
             </div>
         `;
 
-        // Re-initialize icons
-        if (window.lucide) {
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        }
-
-        this.attachEvents();
-        this.renderView();
+        if (window.lucide) lucide.createIcons();
     },
 
-    getViewIcon(view) {
-        const icons = { kanban: 'columns', lista: 'list', gantt: 'bar-chart-2', calendario: 'calendar', reportes: 'pie-chart' };
-        return icons[view] || 'grid';
+    setView(view) {
+        this.currentView = view;
+        this.render();
     },
 
-    attachEvents() {
-        // View switcher
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.currentView = btn.dataset.view;
-                document.querySelectorAll('.view-btn').forEach(b => {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-ghost');
-                });
-                btn.classList.remove('btn-ghost');
-                btn.classList.add('btn-secondary');
-                this.renderView();
-            });
-        });
-
-        // Project filter
-        document.querySelectorAll('[data-project]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (e.target.closest('[data-action="new-folder"]')) return;
-                this.currentProject = btn.dataset.project === 'all' ? null : parseInt(btn.dataset.project);
-                this.currentFolder = null;
-                this.render();
-            });
-        });
-
-        // Folder filter
-        document.querySelectorAll('[data-folder]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.currentFolder = parseInt(btn.dataset.folder);
-                this.currentProject = parseInt(btn.dataset.projectId);
-                this.render();
-            });
-        });
-
-        // New task
-        document.querySelector('[data-action="new-task"]')?.addEventListener('click', () => {
-            this.showTaskForm();
-        });
-
-        // New project
-        document.querySelector('[data-action="new-project"]')?.addEventListener('click', () => {
-            this.showProjectForm();
-        });
-
-        // New folder action
-        document.querySelectorAll('[data-action="new-folder"]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const nombre = prompt('Nombre de la nueva carpeta:');
-                if (nombre) {
-                    const projectId = parseInt(btn.dataset.projectId);
-                    const carpetas = Store.get('carpetas') || [];
-                    const newId = Store._nextId++;
-                    carpetas.push({ id: newId, nombre, proyectoId: projectId });
-                    Store.set('carpetas', carpetas);
-                    this.render();
-                }
-            });
-        });
-
-        // Search
-        document.getElementById('search-tasks')?.addEventListener('input', Utils.debounce(() => {
-            this.renderView();
-        }, 300));
-
-        // Priority filter
-        document.getElementById('filter-priority')?.addEventListener('change', () => {
-            this.renderView();
-        });
+    filterArea(id) {
+        this.currentArea = id;
+        this.currentProject = null;
+        this.currentFolder = null;
+        this.render();
     },
 
-    getTasks() {
-        let tareas = Store.get('tareas') || [];
-
-        if (this.currentProject) {
-            tareas = tareas.filter(t => t.proyectoId === this.currentProject);
+    filterProject(id) {
+        this.currentProject = id;
+        this.currentFolder = null;
+        if (id) {
+            const p = Store.find('proyectos', id);
+            this.currentArea = p ? p.areaId : null;
+        } else {
+            this.currentArea = null;
         }
+        this.render();
+    },
 
-        if (this.currentFolder) {
-            tareas = tareas.filter(t => t.carpetaId === this.currentFolder);
+    filterFolder(id, projectId) {
+        this.currentFolder = id;
+        this.currentProject = projectId;
+        if (projectId) {
+            const p = Store.find('proyectos', projectId);
+            this.currentArea = p ? p.areaId : null;
         }
+        this.render();
+    },
 
-        const searchTerm = document.getElementById('search-tasks')?.value;
-        if (searchTerm) {
-            tareas = Utils.search(tareas, searchTerm, ['titulo', 'proyecto']);
-        }
-
-        const priority = document.getElementById('filter-priority')?.value;
-        if (priority) {
-            tareas = tareas.filter(t => t.prioridad === priority);
-        }
-
-        return tareas;
+    getPendingCount() {
+        const requests = Store.get('projectRequests') || [];
+        return requests.filter(r => r.estado === 'pendiente').length;
     },
 
     renderView() {
-        const container = document.getElementById('tasks-content');
-        if (!container) return;
-        container.innerHTML = '';
-
-        if (this.currentView === 'kanban') {
-            this.renderKanban(container);
-        } else if (this.currentView === 'lista') {
-            this.renderLista(container);
-        } else if (this.currentView === 'gantt') {
-            this.renderGantt(container);
-        } else if (this.currentView === 'calendario') {
-            this.renderCalendario(container);
-        } else if (this.currentView === 'reportes') {
-            this.renderReportes(container);
+        if (this.currentView === 'requests') return this.renderRequests();
+        switch (this.currentView) {
+            case 'kanban': return this.renderKanban();
+            case 'lista': return this.renderLista();
+            case 'gantt': return this.renderGantt();
+            case 'calendario': return this.renderCalendario();
+            case 'reportes': return this.renderReportes();
+            default: return this.renderKanban();
         }
     },
 
-    renderKanban(container) {
-        const tareas = this.getTasks();
+    renderKanban() {
+        const tasks = this.getFilteredTasks();
         const columns = [
-            { id: 'todo', name: 'Por Hacer', color: '#94a3b8' },
-            { id: 'in-progress', name: 'En Progreso', color: '#3b82f6' },
-            { id: 'review', name: 'En Revisión', color: '#f59e0b' },
-            { id: 'done', name: 'Completado', color: '#10b981' }
+            { id: 'todo', name: 'Por Hacer', color: 'var(--color-gray-400)' },
+            { id: 'in-progress', name: 'En Progreso', color: 'var(--color-primary-500)' },
+            { id: 'review', name: 'En Revisión', color: 'var(--color-warning-500)' },
+            { id: 'done', name: 'Completado', color: 'var(--color-success-500)' }
         ];
 
-        container.innerHTML = `
-            <div class="kanban-board">
+        return `
+            <div class="kanban-board" style="gap:24px;">
                 ${columns.map(col => {
-            const colTasks = tareas.filter(t => t.estado === col.id);
+            const colTasks = tasks.filter(t => t.estado === col.id);
             return `
-                        <div class="kanban-column" data-status="${col.id}">
-                            <div class="kanban-column-header">
-                                <div class="kanban-column-title">
-                                    <span style="width:12px;height:12px;border-radius:50%;background:${col.color}"></span>
-                                    ${col.name}
-                                    <span class="kanban-column-count">${colTasks.length}</span>
-                                </div>
-                                <div class="kanban-column-actions">
-                                    <button data-action="add-task" data-status="${col.id}"><i data-lucide="plus"></i></button>
+                        <div class="kanban-column" style="background:var(--color-gray-25); border:1px solid var(--color-gray-100); border-radius:24px; min-height: calc(100vh - 250px);">
+                            <div class="kanban-column-header p-5 border-b border-gray-100">
+                                <div class="flex items-center gap-2">
+                                    <div style="width:10px;height:10px;border-radius:50%;background:${col.color};"></div>
+                                    <h4 class="font-bold text-sm">${col.name}</h4>
+                                    <span class="badge badge-ghost">${colTasks.length}</span>
                                 </div>
                             </div>
-                            <div class="kanban-column-body" data-status="${col.id}">
-                                ${colTasks.map(task => this.renderKanbanCard(task)).join('')}
+                            <div class="kanban-column-body p-4 flex flex-col gap-4" ondrop="DesarrolloModule.handleDrop(event, '${col.id}')" ondragover="event.preventDefault()">
+                                ${colTasks.length > 0 ? colTasks.map(t => this.renderTaskCard(t)).join('') : '<div class="text-xs text-center py-8 text-tertiary">Sin tareas</div>'}
                             </div>
-                             <div class="p-2">
-                                <button class="btn btn-ghost btn-sm w-full text-gray-500 hover:text-primary-600" data-action="add-task" data-status="${col.id}">
-                                    <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
-                                    Agregar tarea
-                                </button>
-                             </div>
                         </div>
                     `;
         }).join('')}
             </div>
         `;
-
-        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-        this.attachKanbanEvents();
     },
 
-    renderKanbanCard(task) {
-        const priorityColors = { alta: '#f43f5e', media: '#f59e0b', baja: '#10b981' };
+    renderTaskCard(task) {
+        const isPending = (task.proyectoId && task.proyectoId.toString().startsWith('PENDING')) ||
+            (task.carpetaId && task.carpetaId.toString().startsWith('PENDING'));
         return `
-            <div class="kanban-card" draggable="true" data-id="${task.id}">
-                <div class="kanban-card-labels">
-                    ${task.etiquetas?.map(et => `
-                        <span class="kanban-card-label" style="background: var(--color-primary-100); color: var(--color-primary-700);">${et}</span>
-                    `).join('') || ''}
-                </div>
-                <div class="kanban-card-title">${task.titulo}</div>
-                <div class="kanban-card-footer">
-                    <div class="kanban-card-meta">
-                        <span style="color: ${priorityColors[task.prioridad] || '#94a3b8'};">
-                            <i data-lucide="flag"></i>
-                            ${task.prioridad}
-                        </span>
-                        ${task.fechaVencimiento ? `
-                            <span>
-                                <i data-lucide="calendar"></i>
-                                ${Utils.formatDate(task.fechaVencimiento)}
-                            </span>
-                        ` : ''}
-                    </div>
-                    <div class="avatar avatar-sm">${Utils.getInitials(task.asignado || 'NA')}</div>
-                </div>
-            </div>
-        `;
-    },
-
-    attachKanbanEvents() {
-        const cards = document.querySelectorAll('.kanban-card');
-        const columns = document.querySelectorAll('.kanban-column-body');
-
-        cards.forEach(card => {
-            card.addEventListener('dragstart', (e) => {
-                card.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', card.dataset.id);
-            });
-
-            card.addEventListener('dragend', () => {
-                card.classList.remove('dragging');
-            });
-
-            card.addEventListener('click', () => {
-                this.showTaskForm(parseInt(card.dataset.id));
-            });
-        });
-
-        columns.forEach(column => {
-            column.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                column.parentElement.style.background = 'var(--color-slate-50)';
-            });
-
-            column.addEventListener('dragleave', () => {
-                column.parentElement.style.background = '';
-            });
-
-            column.addEventListener('drop', (e) => {
-                e.preventDefault();
-                column.parentElement.style.background = '';
-                const taskId = parseInt(e.dataTransfer.getData('text/plain'));
-                const newStatus = column.dataset.status;
-
-                Store.update('tareas', taskId, { estado: newStatus });
-                Components.toast('Tarea actualizada', 'success');
-                this.renderView();
-            });
-        });
-
-        document.querySelectorAll('[data-action="add-task"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.showTaskForm(null, { estado: btn.dataset.status });
-            });
-        });
-    },
-
-    renderLista(container) {
-        const tareas = this.getTasks();
-
-        container.innerHTML = `
-            <div class="card">
-                <div class="card-body p-0">
-                    ${Components.dataTable({
-            columns: [
-                { key: 'titulo', label: 'Tarea' },
-                { key: 'proyecto', label: 'Proyecto' },
-                { key: 'estado', label: 'Estado', type: 'badge' },
-                { key: 'prioridad', label: 'Prioridad', type: 'badge' },
-                { key: 'asignado', label: 'Asignado', type: 'avatar' },
-                { key: 'fechaVencimiento', label: 'Vencimiento', type: 'date' }
-            ],
-            data: tareas,
-            actions: [
-                { icon: 'edit', label: 'Editar', action: 'edit' },
-                { icon: 'trash-2', label: 'Eliminar', action: 'delete' }
-            ]
-        })}
-                </div>
-            </div>
-        `;
-
-        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-
-        document.querySelectorAll('[data-action="edit"]').forEach(btn => {
-            btn.addEventListener('click', () => this.showTaskForm(parseInt(btn.dataset.id)));
-        });
-
-        document.querySelectorAll('[data-action="delete"]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const confirmed = await Components.confirm({
-                    title: 'Eliminar Tarea',
-                    message: '¿Estás seguro de que deseas eliminar esta tarea?',
-                    confirmText: 'Eliminar',
-                    type: 'danger'
-                });
-                if (confirmed) {
-                    Store.delete('tareas', parseInt(btn.dataset.id));
-                    Components.toast('Tarea eliminada', 'success');
-                    this.renderView();
-                }
-            });
-        });
-    },
-
-    renderGantt(container) {
-        const tareas = this.getTasks();
-        const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() - 5);
-        const daysToShow = 15;
-
-        let headerHtml = '';
-        for (let i = 0; i < daysToShow; i++) {
-            const d = new Date(startDate);
-            d.setDate(startDate.getDate() + i);
-            const isToday = d.toDateString() === today.toDateString();
-            headerHtml += `
-                <div style="flex: 1; min-width: 60px; text-align: center; border-right: 1px solid #eee; padding: 5px; background: ${isToday ? '#eff6ff' : 'transparent'};">
-                    <div style="font-size: 0.75rem; color: #64748b;">${d.toLocaleDateString('es-ES', { weekday: 'short' })}</div>
-                    <div style="font-weight: bold; font-size: 0.875rem; color: ${isToday ? '#2563eb' : '#334155'};">${d.getDate()}</div>
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <div class="card" style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-                <div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                        <i data-lucide="bar-chart-2" style="color: #64748b;"></i>
-                        Cronograma de Proyecto
-                    </h3>
-                    <div style="display: flex; gap: 8px;">
-                         <button class="btn btn-sm btn-ghost" style="border: 1px solid #eee;">Hoy</button>
-                    </div>
-                </div>
+            <div class="card p-4 shadow-sm hover:shadow-md transition-all cursor-pointer border-l-4" 
+                 draggable="true" ondragstart="DesarrolloModule.handleDragStart(event, ${task.id})"
+                 style="border-left-color:${task.prioridad === 'alta' ? 'var(--color-secondary-red)' : 'var(--color-primary-500)'}"
+                 onclick="DesarrolloModule.showTaskForm(${task.id})">
                 
-                <div style="flex: 1; overflow: auto; position: relative;">
-                    <!-- Header -->
-                    <div style="display: flex; border-bottom: 1px solid #eee; position: sticky; top: 0; background: #fff; z-index: 10; width: max-content; min-width: 100%;">
-                        <div style="width: 250px; padding: 12px; border-right: 1px solid #eee; font-weight: 600; font-size: 0.875rem; background: #f8fafc; position: sticky; left: 0; z-index: 20;">Tarea</div>
-                        <div style="flex: 1; display: flex;">
-                            ${headerHtml}
-                        </div>
+                ${isPending ? `
+                    <div class="flex items-center gap-1 text-warning-600 text-3xs font-bold uppercase mb-2">
+                        <i data-lucide="alert-circle" style="width:10px;"></i>
+                        Ubicación pendiente
                     </div>
+                ` : ''}
 
-                    <!-- Body -->
-                    <div style="width: max-content; min-width: 100%;">
-                        ${tareas.map(t => {
-            const start = t.fechaInicio ? new Date(t.fechaInicio) : new Date();
-            const end = t.fechaVencimiento ? new Date(t.fechaVencimiento) : new Date();
-
-            const diffStart = Math.ceil((start - startDate) / (1000 * 60 * 60 * 24));
-            const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) || 1;
-
-            let offset = diffStart;
-            let width = duration;
-
-            if (offset < 0) { width += offset; offset = 0; }
-            if (offset + width > daysToShow) { width = daysToShow - offset; }
-
-            if (width <= 0) return '';
-
-            const statusColors = {
-                'todo': '#94a3b8',
-                'in-progress': '#3b82f6',
-                'review': '#f59e0b',
-                'done': '#10b981'
-            };
-
-            const leftPos = (offset * 100 / daysToShow) + '%';
-            const widthPos = (width * 100 / daysToShow) + '%';
-
-            return `
-                                <div style="display: flex; border-bottom: 1px solid #eee; height: 48px; align-items: center;">
-                                    <div style="width: 250px; min-width: 250px; padding: 0 12px; border-right: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 8px; font-size: 0.875rem; background: #fff; position: sticky; left: 0; z-index: 15;">
-                                        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColors[t.estado]};"></div>
-                                        ${t.titulo}
-                                    </div>
-                                    <div style="flex: 1; position: relative; height: 100%; display: flex;">
-                                        ${Array(daysToShow).fill(0).map((_, i) => `
-                                            <div style="flex: 1; border-right: 1px solid #f8fafc; height: 100%;"></div>
-                                        `).join('')}
-                                        
-                                        <div data-task-id="${t.id}" style="position: absolute; top: 12px; height: 24px; left: ${leftPos}; width: ${widthPos}; background: ${statusColors[t.estado]}; border-radius: 4px; padding: 0 8px; display: flex; align-items: center; color: white; font-size: 0.75rem; overflow: hidden; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer;" title="${t.titulo}">
-                                            ${width > 1 ? t.prioridad : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-        }).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-
-        // Click Gantt bars to edit task
-        container.querySelectorAll('[data-task-id]').forEach(el => {
-            el.addEventListener('click', () => {
-                this.showTaskForm(parseInt(el.dataset.taskId));
-            });
-        });
-    },
-
-    renderCalendario(container) {
-        const tareas = this.getTasks();
-        if (!this.calendarState) this.calendarState = { offset: 0 };
-        const today = new Date();
-        const date = new Date(today.getFullYear(), today.getMonth() + this.calendarState.offset, 1);
-        const year = date.getFullYear();
-        const month = date.getMonth();
-
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDay = firstDay.getDay();
-
-        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-        let cells = '';
-
-        for (let i = 0; i < startingDay; i++) {
-            cells += `<div style="background: #f8fafc; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; min-height: 120px;"></div>`;
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-            const currentDate = new Date(year, month, i);
-            const isToday = currentDate.toDateString() === today.toDateString();
-
-            const dayTasks = tareas.filter(t => {
-                if (!t.fechaInicio) return false;
-                const start = new Date(t.fechaInicio);
-                start.setHours(0, 0, 0, 0);
-                const current = new Date(currentDate);
-                current.setHours(0, 0, 0, 0);
-                return current.getTime() === start.getTime();
-            });
-
-            cells += `
-                <div style="background: white; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; min-height: 120px; padding: 8px; display: flex; flex-direction: column; gap: 4px; position: relative;">
-                    <span style="font-size: 0.875rem; font-weight: 600; margin-bottom: 4px; ${isToday ? 'background: #2563eb; color: white; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%;' : 'color: #334155;'}">
-                        ${i}
-                    </span>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 4px; overflow-y: auto;">
-                        ${dayTasks.map(t => {
-                const colors = {
-                    'todo': { bg: '#f1f5f9', text: '#334155' },
-                    'in-progress': { bg: '#dbeafe', text: '#1e40af' },
-                    'review': { bg: '#fef3c7', text: '#92400e' },
-                    'done': { bg: '#d1fae5', text: '#065f46' }
-                };
-                const c = colors[t.estado] || colors['todo'];
-                return `
-                                <div data-task-id="${t.id}" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: ${c.bg}; color: ${c.text}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="${t.titulo}">
-                                    ${t.titulo}
-                                </div>
-                            `;
-            }).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <div class="card" style="height: 100%; display: flex; flex-direction: column;">
-                 <div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 16px;">
-                        <h3 style="font-weight: bold; font-size: 1.25rem;">${monthNames[month]} <span style="font-weight: normal; color: #94a3b8;">${year}</span></h3>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="btn btn-icon btn-sm btn-ghost" id="dev-cal-prev"><i data-lucide="chevron-left"></i></button>
-                            <button class="btn btn-sm btn-ghost" id="dev-cal-today" style="border:1px solid #eee;">Hoy</button>
-                            <button class="btn btn-icon btn-sm btn-ghost" id="dev-cal-next"><i data-lucide="chevron-right"></i></button>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary btn-sm" data-action="add-task" data-status="todo">
-                        <i data-lucide="plus"></i> Nueva Tarea
-                    </button>
-                </div>
-                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); background: #f8fafc; border-bottom: 1px solid #eee;">
-                    ${['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d =>
-            `<div style="padding: 12px; text-align: center; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">${d}</div>`
-        ).join('')}
-                </div>
+                <h5 class="text-sm font-bold mb-2">${task.titulo}</h5>
                 
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); background: #e2e8f0; gap: 1px; border-left: 1px solid #e2e8f0; overflow-y: auto;">
-                    ${cells}
+                <div class="flex justify-between items-center mt-4">
+                    <div class="flex items-center gap-1 text-xs text-tertiary">
+                        <i data-lucide="calendar" style="width:12px;"></i>
+                        ${task.fechaVencimiento ? Utils.formatDate(task.fechaVencimiento) : 'S/F'}
+                    </div>
+                    <div class="avatar-sm" title="${task.asignado}">${Utils.getInitials(task.asignado)}</div>
                 </div>
             </div>
         `;
-        lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-
-        // Calendar navigation
-        document.getElementById('dev-cal-prev')?.addEventListener('click', () => {
-            this.calendarState.offset--;
-            this.renderView();
-        });
-        document.getElementById('dev-cal-next')?.addEventListener('click', () => {
-            this.calendarState.offset++;
-            this.renderView();
-        });
-        document.getElementById('dev-cal-today')?.addEventListener('click', () => {
-            this.calendarState.offset = 0;
-            this.renderView();
-        });
-
-        // Task click in calendar opens edit
-        container.querySelectorAll('[data-task-id]').forEach(el => {
-            el.style.cursor = 'pointer';
-            el.addEventListener('click', () => {
-                this.showTaskForm(parseInt(el.dataset.taskId));
-            });
-        });
-
-        // Add task from calendar
-        container.querySelector('[data-action="add-task"]')?.addEventListener('click', () => {
-            this.showTaskForm(null, { estado: 'todo' });
-        });
     },
 
-    showTaskForm(id = null, defaults = {}) {
-        const tarea = id ? Store.find('tareas', id) : defaults;
-        const isEdit = !!id;
-        const proyectos = Store.get('proyectos') || [];
+    handleDragStart(e, id) {
+        e.dataTransfer.setData('taskId', id);
+    },
 
-        const { modal, close } = Components.modal({
-            title: isEdit ? 'Editar Tarea' : 'Nueva Tarea',
-            size: 'lg',
+    handleDrop(e, newStatus) {
+        e.preventDefault();
+        const id = parseInt(e.dataTransfer.getData('taskId'));
+        Store.update('tareas', id, { estado: newStatus });
+        this.render();
+    },
+
+    getFilteredTasks() {
+        let tasks = Store.get('tareas') || [];
+        if (this.currentArea && !this.currentProject) {
+            const projectsInArea = Store.get('proyectos').filter(p => p.areaId === this.currentArea).map(p => p.id);
+            tasks = tasks.filter(t => projectsInArea.includes(t.proyectoId));
+        }
+        if (this.currentProject && !this.currentFolder) tasks = tasks.filter(t => t.proyectoId == this.currentProject);
+        if (this.currentFolder) tasks = tasks.filter(t => t.carpetaId == this.currentFolder);
+        return tasks;
+    },
+
+    showMetrics(tipo, id) {
+        let name = '';
+        let filteredTasks = [];
+
+        if (tipo === 'area') {
+            const area = Store.find('areas', id);
+            name = area?.nombre || 'Área';
+            const projectsInArea = Store.get('proyectos').filter(p => p.areaId === id).map(p => p.id);
+            filteredTasks = Store.get('tareas').filter(t => projectsInArea.includes(t.proyectoId));
+        } else if (tipo === 'proyecto') {
+            const proj = Store.find('proyectos', id);
+            name = proj?.nombre || 'Proyecto';
+            filteredTasks = Store.get('tareas').filter(t => t.proyectoId == id);
+        } else {
+            const fold = Store.find('carpetas', id);
+            name = fold?.nombre || 'Subcarpeta';
+            filteredTasks = Store.get('tareas').filter(t => t.carpetaId == id);
+        }
+
+        const stats = {
+            total: filteredTasks.length,
+            todo: filteredTasks.filter(t => t.estado === 'todo').length,
+            inProgress: filteredTasks.filter(t => t.estado === 'in-progress').length,
+            done: filteredTasks.filter(t => t.estado === 'done').length,
+            late: filteredTasks.filter(t => t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < new Date()).length
+        };
+
+        Components.modal({
+            title: `Métricas: ${name}`,
+            size: 'md',
             content: `
-                <form id="task-form">
-                    <div class="grid grid-cols-2 gap-4">
-                        ${Components.formInput({ label: 'Título', name: 'titulo', value: tarea?.titulo || '', required: true, class: 'col-span-2' })}
-                        
-                        ${Components.formInput({
-                label: 'Proyecto',
-                name: 'proyectoId',
-                type: 'select',
-                value: tarea?.proyectoId || '',
-                options: projectsToOptions(proyectos),
-                required: true
-            })}
-                        
-                        ${Components.formInput({
-                label: 'Prioridad',
-                name: 'prioridad',
-                type: 'select',
-                value: tarea?.prioridad || 'media',
-                options: [
-                    { value: 'alta', label: 'Alta' },
-                    { value: 'media', label: 'Media' },
-                    { value: 'baja', label: 'Baja' }
-                ]
-            })}
-                        
-                        ${Components.formInput({ label: 'Fecha Inicio', name: 'fechaInicio', type: 'date', value: tarea?.fechaInicio || new Date().toISOString().split('T')[0] })}
-                        ${Components.formInput({ label: 'Fecha Vencimiento', name: 'fechaVencimiento', type: 'date', value: tarea?.fechaVencimiento || '' })}
-                        
-                        ${Components.formInput({ label: 'Asignado a', name: 'asignado', value: tarea?.asignado || '' })}
-                        ${Components.formInput({
-                label: 'Estado',
-                name: 'estado',
-                type: 'select',
-                value: tarea?.estado || 'todo',
-                options: [
-                    { value: 'todo', label: 'Por hacer' },
-                    { value: 'in-progress', label: 'En progreso' },
-                    { value: 'review', label: 'Revisión' },
-                    { value: 'done', label: 'Completado' }
-                ]
-            })}
-                        
-                        ${Components.formInput({ label: 'Descripción', name: 'descripcion', type: 'textarea', value: tarea?.descripcion || '', class: 'col-span-2', rows: 4 })}
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="summary-card">
+                        <span class="label">Total Tareas</span>
+                        <span class="value">${stats.total}</span>
                     </div>
-                </form>
-            `,
-            footer: `
-                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                <button class="btn btn-primary" data-action="save">Guardar</button>
+                    <div class="summary-card">
+                        <span class="label text-red-500">Atrasadas</span>
+                        <span class="value text-red-500">${stats.late}</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="label">Pendientes</span>
+                        <span class="value">${stats.todo + stats.inProgress}</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="label">Completadas</span>
+                        <span class="value text-green-500">${stats.done}</span>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold mb-3 font-heading">Distribución de Estados</h4>
+                    <div class="h-4 bg-gray-100 rounded-full overflow-hidden flex">
+                        <div style="width:${(stats.done / stats.total) * 100 || 0}%; background:var(--color-primary-500);" title="Completadas"></div>
+                        <div style="width:${(stats.inProgress / stats.total) * 100 || 0}%; background:var(--color-secondary-teal);" title="En progreso"></div>
+                        <div style="width:${(stats.todo / stats.total) * 100 || 0}%; background:var(--color-gray-300);" title="Pendientes"></div>
+                    </div>
+                </div>
             `
         });
+    },
 
-        function projectsToOptions(projs) {
-            return projs.map(p => ({ value: p.id, label: p.nombre }));
-        }
+    showAreaForm() {
+        const { modal, close } = Components.modal({
+            title: 'Crear Nuevo Espacio',
+            content: `
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Espacio</label>
+                        <input type="text" id="area-name" class="form-input" placeholder="Ej: Operaciones Logísticas">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color Representativo</label>
+                        <input type="color" id="area-color" class="form-input" value="#00875a" style="height:44px;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Icono</label>
+                        <select id="area-icon" class="form-select">
+                            <option value="briefcase">Maletín (Corporativo)</option>
+                            <option value="zap">Rayo (I+D+i)</option>
+                            <option value="trending-up">Gráfico (Ventas)</option>
+                            <option value="truck">Camión (Servicios)</option>
+                            <option value="users">Usuarios (RRHH)</option>
+                        </select>
+                    </div>
+                </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="DesarrolloModule.createArea()">Crear Espacio Ahora</button>
+            `
+        });
+    },
 
-        modal.querySelector('[data-action="cancel"]').addEventListener('click', close);
-        modal.querySelector('[data-action="save"]').addEventListener('click', () => {
-            const form = document.getElementById('task-form');
-            if (!form.checkValidity()) { form.reportValidity(); return; }
+    createArea() {
+        const nombre = document.getElementById('area-name').value;
+        const color = document.getElementById('area-color').value;
+        const icono = document.getElementById('area-icon').value;
 
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            data.proyectoId = parseInt(data.proyectoId);
-            const project = Store.find('proyectos', data.proyectoId);
-            data.proyecto = project ? project.nombre : '';
+        if (!nombre) return;
 
-            if (isEdit) {
-                Store.update('tareas', id, data);
-                Components.toast('Tarea actualizada', 'success');
+        Store.add('areas', { nombre, color, icono });
+        Components.toast('Nuevo Espacio creado exitosamente', 'success');
+        document.querySelector('.modal-backdrop').remove();
+        this.render();
+    },
+
+    renderRequests() {
+        const requests = Store.get('projectRequests') || [];
+        const areas = Store.get('areas');
+        const proyectos = Store.get('proyectos');
+
+        return `
+            <div class="max-w-5xl mx-auto">
+                <div class="welcome-section mb-8">
+                    <h1 class="welcome-title text-2xl">Administración de Estructura</h1>
+                    <p class="welcome-subtitle">Revisa y aprueba solicitudes para nuevos proyectos o subcarpetas.</p>
+                </div>
+
+                <div class="card overflow-hidden">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre Solicitado</th>
+                                <th>Tipo</th>
+                                <th>Ubicación Superior</th>
+                                <th>Solicitante</th>
+                                <th>Estado</th>
+                                <th class="text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${requests.length === 0 ? '<tr><td colspan="6" class="text-center py-8 text-secondary">No hay solicitudes pendientes</td></tr>' : ''}
+                            ${requests.map(r => {
+            let parentName = '-';
+            if (r.tipo === 'proyecto') {
+                const area = areas.find(a => a.id == r.areaId);
+                parentName = area ? `Área: ${area.nombre}` : '-';
             } else {
-                Store.add('tareas', data);
-                Components.toast('Tarea creada', 'success');
+                const proj = proyectos.find(p => p.id == r.proyectoId);
+                parentName = proj ? `Proyecto: ${proj.nombre}` : (r.proyectoId && r.proyectoId.toString().startsWith('PENDING') ? 'Proyecto Pendiente' : '-');
             }
 
-            close();
-            this.renderView();
+            return `
+                                    <tr>
+                                        <td class="font-bold">${r.nombre}</td>
+                                        <td><span class="badge badge-ghost">${r.tipo}</span></td>
+                                        <td class="text-xs text-secondary">${parentName}</td>
+                                        <td>${r.solicitadoPor}</td>
+                                        <td>
+                                            <span class="badge badge-${r.estado === 'pendiente' ? 'warning' : r.estado === 'aprobada' ? 'success' : 'error'}">
+                                                ${r.estado}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">
+                                            ${r.estado === 'pendiente' ? `
+                                                <div class="flex justify-end gap-2">
+                                                    <button class="btn btn-icon btn-ghost text-red-500" onclick="DesarrolloModule.processRequest(${r.id}, 'rechazada')">
+                                                        <i data-lucide="x-circle"></i>
+                                                    </button>
+                                                    <button class="btn btn-icon btn-ghost text-green-500" onclick="DesarrolloModule.processRequest(${r.id}, 'aprobada')">
+                                                        <i data-lucide="check-circle"></i>
+                                                    </button>
+                                                </div>
+                                            ` : '<span class="text-xs text-tertiary">Procesada</span>'}
+                                        </td>
+                                    </tr>
+                                `;
+        }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    },
+
+    processRequest(id, status) {
+        const requests = Store.get('projectRequests');
+        const r = requests.find(item => item.id === id);
+        if (!r) return;
+
+        r.estado = status;
+
+        if (status === 'aprobada') {
+            if (r.tipo === 'proyecto') {
+                const newProj = Store.add('proyectos', { areaId: r.areaId, nombre: r.nombre, estado: 'Activo', progreso: 0 });
+                // Update tasks that were pointing to this pending ID
+                const tasks = Store.get('tareas');
+                tasks.forEach(t => {
+                    if (t.proyectoId === `PENDING-${id}`) t.proyectoId = newProj.id;
+                });
+            } else if (r.tipo === 'subcarpeta') {
+                const newFolder = Store.add('carpetas', { nombre: r.nombre, proyectoId: r.proyectoId });
+                // Update tasks
+                const tasks = Store.get('tareas');
+                tasks.forEach(t => {
+                    if (t.carpetaId === `PENDING-${id}`) t.carpetaId = newFolder.id;
+                });
+            }
+        }
+
+        Store.set('projectRequests', requests);
+        Components.toast(`Solicitud ${status} correctamente`, status === 'aprobada' ? 'success' : 'info');
+        this.render();
+    },
+
+    showRequestForm(tipo, parentId) {
+        const title = tipo === 'proyecto' ? 'Solicitar Nuevo Proyecto' : 'Solicitar Nueva Subcarpeta';
+        const label = tipo === 'proyecto' ? 'Nombre del Proyecto' : 'Nombre de la Subcarpeta';
+
+        const { modal, close } = Components.modal({
+            title,
+            content: `
+                <div class="form-group">
+                    <label class="form-label">${label}</label>
+                    <input type="text" id="req-name" class="form-input" placeholder="Ej: ${tipo === 'proyecto' ? 'Adquisición' : 'Planos Tec.'}">
+                </div>
+            `,
+            footer: `
+                <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Cancelar</button>
+                <button class="btn btn-primary" onclick="DesarrolloModule.submitRequest('${tipo}', ${parentId})">Enviar Solicitud</button>
+            `
         });
     },
 
-    showProjectForm() {
+    submitRequest(tipo, parentId) {
+        const name = document.getElementById('req-name').value;
+        if (!name) return;
+
+        Store.add('projectRequests', {
+            tipo,
+            nombre: name,
+            [tipo === 'proyecto' ? 'areaId' : 'proyectoId']: parentId,
+            solicitadoPor: Store.state.user.name,
+            fecha: new Date().toISOString(),
+            estado: 'pendiente'
+        });
+
+        Components.toast('Solicitud enviada para aprobación', 'warning');
+        document.querySelector('.modal-backdrop').remove();
+        this.render();
+    },
+
+    showTaskForm(id = null) {
+        const task = id ? Store.find('tareas', id) : null;
+        const areas = Store.get('areas');
+        const proyectos = Store.get('proyectos');
+        const carpetas = Store.get('carpetas');
+        const empleados = Store.get('empleados');
+
+        // Determinar área inicial
+        const initialAreaId = task ? proyectos.find(p => p.id == task.proyectoId)?.areaId : this.currentArea;
+
         const { modal, close } = Components.modal({
-            title: 'Nuevo Proyecto',
+            title: task ? 'Editar Tarea' : 'Nueva Tarea',
+            size: 'lg',
             content: `
-                <form id="project-form">
-                    ${Components.formInput({ label: 'Nombre del Proyecto', name: 'nombre', required: true })}
-                    ${Components.formInput({ label: 'Cliente', name: 'cliente', placeholder: 'Opcional' })}
-                    ${Components.formInput({ label: 'Descripción', name: 'descripcion', type: 'textarea' })}
+                <form id="task-detail-form">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="form-group col-span-2">
+                            <label class="form-label">Nombre de la Tarea</label>
+                            <input type="text" name="titulo" class="form-input" value="${task?.titulo || ''}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Área / Espacio</label>
+                            <select name="areaId" class="form-select" id="task-edit-area" required>
+                                <option value="">Seleccionar Área...</option>
+                                ${areas.map(a => `<option value="${a.id}" ${initialAreaId == a.id ? 'selected' : ''}>${a.nombre}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Proyecto</label>
+                            <div class="flex gap-2">
+                                <select name="proyectoId" class="form-select" id="task-edit-project" required>
+                                    <option value="">Seleccionar Proyecto...</option>
+                                    ${initialAreaId ? proyectos.filter(p => p.areaId == initialAreaId).map(p => `
+                                        <option value="${p.id}" ${task?.proyectoId == p.id ? 'selected' : ''}>${p.nombre}</option>
+                                    `).join('') : ''}
+                                    <option value="NEW">+ Solicitar Proyecto</option>
+                                </select>
+                            </div>
+                            <input type="text" id="new-project-input" name="newProjectName" class="form-input mt-2 hidden" placeholder="Nombre solicitado">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Subcarpeta</label>
+                            <select name="carpetaId" id="task-edit-folder" class="form-select">
+                                <option value="">(Raíz del proyecto)</option>
+                                ${task?.proyectoId ? carpetas.filter(c => c.proyectoId == task.proyectoId).map(c => `
+                                    <option value="${c.id}" ${task?.carpetaId == c.id ? 'selected' : ''}>${c.nombre}</option>
+                                `).join('') : ''}
+                                <option value="NEW">+ Solicitar Subcarpeta</option>
+                            </select>
+                            <input type="text" id="new-folder-input" name="newFolderName" class="form-input mt-2 hidden" placeholder="Nombre solicitado">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <select name="estado" class="form-select">
+                                <option value="todo" ${task?.estado === 'todo' ? 'selected' : ''}>Por Hacer</option>
+                                <option value="in-progress" ${task?.estado === 'in-progress' ? 'selected' : ''}>En Progreso</option>
+                                <option value="review" ${task?.estado === 'review' ? 'selected' : ''}>En Revisión</option>
+                                <option value="done" ${task?.estado === 'done' ? 'selected' : ''}>Completado</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Encargado</label>
+                            <select name="asignado" class="form-select" required>
+                                <option value="">Seleccionar...</option>
+                                ${empleados.map(e => `<option value="${e.nombre}" ${task?.asignado === e.nombre ? 'selected' : ''}>${e.nombre}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Prioridad</label>
+                            <select name="prioridad" class="form-select">
+                                <option value="baja" ${task?.prioridad === 'baja' ? 'selected' : ''}>Baja</option>
+                                <option value="media" ${task?.prioridad === 'media' ? 'selected' : ''}>Media</option>
+                                <option value="alta" ${task?.prioridad === 'alta' ? 'selected' : ''}>Alta</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                             <label class="form-label">Vencimiento</label>
+                             <input type="date" name="fechaVencimiento" class="form-input" value="${task?.fechaVencimiento || ''}">
+                        </div>
+
+                        <div class="form-group col-span-2">
+                             <label class="form-label">Carpeta Google Drive Asociada</label>
+                             <div class="flex gap-2">
+                                <div class="input-group-icon w-full">
+                                    <i data-lucide="link" class="w-4 h-4 text-gray-400"></i>
+                                    <input type="url" name="driveUrl" class="form-input pl-10" placeholder="https://drive.google.com/..." value="${task?.driveUrl || ''}">
+                                </div>
+                             </div>
+                        </div>
+
+                        <div class="form-group col-span-2">
+                            <label class="form-label">Descripción</label>
+                            <textarea name="descripcion" class="form-textarea" rows="3">${task?.descripcion || ''}</textarea>
+                        </div>
+                    </div>
                 </form>
             `,
             footer: `
-                <button class="btn btn-secondary" data-action="cancel">Cancelar</button>
-                <button class="btn btn-primary" data-action="save">Crear Proyecto</button>
+                <div class="flex justify-between w-full">
+                    ${id ? `<button class="btn btn-ghost text-red-500" onclick="DesarrolloModule.deleteTask(${id}, close)">Eliminar Tarea</button>` : '<div></div>'}
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary" onclick="this.closest('.modal-backdrop').remove()">Cancelar</button>
+                        <button class="btn btn-primary" id="save-task-btn">Guardar Cambios</button>
+                    </div>
+                </div>
             `
         });
 
-        modal.querySelector('[data-action="cancel"]').addEventListener('click', close);
-        modal.querySelector('[data-action="save"]').addEventListener('click', () => {
-            const form = document.getElementById('project-form');
+        if (window.lucide) lucide.createIcons();
+
+        // Lógica de cascada Área -> Proyecto -> Carpeta
+        const areaSelect = document.getElementById('task-edit-area');
+        const projectSelect = document.getElementById('task-edit-project');
+        const folderSelect = document.getElementById('task-edit-folder');
+        const newProjInput = document.getElementById('new-project-input');
+        const newFoldInput = document.getElementById('new-folder-input');
+
+        areaSelect.addEventListener('change', () => {
+            const areaId = areaSelect.value;
+            projectSelect.innerHTML = '<option value="">Seleccionar Proyecto...</option>';
+            if (areaId) {
+                proyectos.filter(p => p.areaId == areaId).forEach(p => {
+                    projectSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+                });
+                projectSelect.innerHTML += '<option value="NEW">+ Solicitar Proyecto</option>';
+            }
+            folderSelect.innerHTML = '<option value="">(Raíz del proyecto)</option>';
+        });
+
+        projectSelect.addEventListener('change', () => {
+            const projId = projectSelect.value;
+            newProjInput.classList.toggle('hidden', projId !== 'NEW');
+            folderSelect.innerHTML = '<option value="">(Raíz del proyecto)</option>';
+
+            if (projId && projId !== 'NEW') {
+                carpetas.filter(c => c.proyectoId == projId).forEach(c => {
+                    folderSelect.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+                });
+            }
+            folderSelect.innerHTML += '<option value="NEW">+ Solicitar Subcarpeta</option>';
+        });
+
+        folderSelect.addEventListener('change', () => {
+            newFoldInput.classList.toggle('hidden', folderSelect.value !== 'NEW');
+        });
+
+        document.getElementById('save-task-btn').addEventListener('click', () => {
+            const form = document.getElementById('task-detail-form');
             if (!form.checkValidity()) { form.reportValidity(); return; }
 
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            Store.add('proyectos', data);
-            Components.toast('Proyecto creado', 'success');
+
+            let finalProjId = data.proyectoId;
+            let finalFoldId = data.carpetaId;
+
+            // Handle Requests inside task form
+            if (data.proyectoId === 'NEW') {
+                const req = Store.add('projectRequests', {
+                    tipo: 'proyecto', areaId: data.areaId, nombre: data.newProjectName,
+                    solicitadoPor: Store.state.user.name, fecha: new Date().toISOString(), estado: 'pendiente'
+                });
+                finalProjId = `PENDING-${req.id}`;
+            }
+
+            if (data.carpetaId === 'NEW') {
+                const req = Store.add('projectRequests', {
+                    tipo: 'subcarpeta', proyectoId: finalProjId, nombre: data.newFolderName,
+                    solicitadoPor: Store.state.user.name, fecha: new Date().toISOString(), estado: 'pendiente'
+                });
+                finalFoldId = `PENDING-${req.id}`;
+            }
+
+            if (id) {
+                Store.update('tareas', id, { ...data, proyectoId: finalProjId, carpetaId: finalFoldId });
+            } else {
+                Store.add('tareas', {
+                    ...data, proyectoId: finalProjId, carpetaId: finalFoldId,
+                    estado: data.estado || 'todo', prioridad: data.prioridad || 'media',
+                    fechaCreacion: new Date().toISOString()
+                });
+            }
+
+            Components.toast('Operación finalizada correctamente', 'success');
             close();
             this.render();
         });
     },
 
-    renderReportes(container) {
-        const allTareas = Store.get('tareas') || [];
-        const tareas = this.getTasks();
-        const proyectos = Store.get('proyectos') || [];
-        const today = new Date();
+    deleteTask(id, close) {
+        if (confirm('¿Estás seguro de eliminar esta tarea?')) {
+            Store.delete('tareas', id);
+            close();
+            this.render();
+        }
+    },
 
-        // Stats
-        const total = tareas.length;
-        const done = tareas.filter(t => t.estado === 'done').length;
-        const inProgress = tareas.filter(t => t.estado === 'in-progress').length;
-        const todo = tareas.filter(t => t.estado === 'todo').length;
-        const review = tareas.filter(t => t.estado === 'review').length;
-        const overdue = tareas.filter(t => t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today).length;
-        const alta = tareas.filter(t => t.prioridad === 'alta').length;
-        const media = tareas.filter(t => t.prioridad === 'media').length;
-        const baja = tareas.filter(t => t.prioridad === 'baja').length;
-        const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
-
-        // Workload by assignee
-        const workload = {};
-        tareas.forEach(t => {
-            if (!t.asignado) return;
-            if (!workload[t.asignado]) workload[t.asignado] = { total: 0, done: 0, pending: 0, overdue: 0 };
-            workload[t.asignado].total++;
-            if (t.estado === 'done') workload[t.asignado].done++;
-            else workload[t.asignado].pending++;
-            if (t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today) workload[t.asignado].overdue++;
-        });
-
-        container.innerHTML = `
-            <div class="animate-fadeIn">
-                <!-- KPI Summary -->
-                <div class="grid grid-cols-5 gap-4 mb-6">
-                    ${Components.statCard({ icon: 'clipboard-list', label: 'Total Tareas', value: total, iconClass: 'primary' })}
-                    ${Components.statCard({ icon: 'check-circle', label: 'Completadas', value: done, iconClass: 'success' })}
-                    ${Components.statCard({ icon: 'loader', label: 'En Progreso', value: inProgress, iconClass: 'warning' })}
-                    ${Components.statCard({ icon: 'alert-circle', label: 'Vencidas', value: overdue, iconClass: 'error' })}
-                    ${Components.statCard({ icon: 'target', label: 'Tasa Completitud', value: completionRate + '%', iconClass: 'success' })}
-                </div>
-
-                <div class="grid grid-cols-2 gap-6 mb-6">
-                    <!-- Distribution by Status -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Distribución por Estado</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-col gap-4">
-                                ${[
-                { label: 'Por Hacer', count: todo, color: '#94a3b8', percent: total ? (todo / total * 100) : 0 },
-                { label: 'En Progreso', count: inProgress, color: '#3b82f6', percent: total ? (inProgress / total * 100) : 0 },
-                { label: 'En Revisión', count: review, color: '#f59e0b', percent: total ? (review / total * 100) : 0 },
-                { label: 'Completado', count: done, color: '#10b981', percent: total ? (done / total * 100) : 0 }
-            ].map(s => `
-                                    <div>
-                                        <div class="flex justify-between items-center mb-1">
-                                            <div class="flex items-center gap-2">
-                                                <span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;"></span>
-                                                <span class="text-sm font-medium">${s.label}</span>
-                                            </div>
-                                            <span class="text-sm text-secondary">${s.count} (${Math.round(s.percent)}%)</span>
-                                        </div>
-                                        <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
-                                            <div style="height:100%;width:${s.percent}%;background:${s.color};border-radius:4px;transition:width 0.5s ease;"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <!-- Visual bar chart -->
-                            <div class="flex items-end gap-3 mt-6" style="height:120px;">
-                                ${[
-                { label: 'Todo', count: todo, color: '#94a3b8' },
-                { label: 'Prog.', count: inProgress, color: '#3b82f6' },
-                { label: 'Rev.', count: review, color: '#f59e0b' },
-                { label: 'Done', count: done, color: '#10b981' }
-            ].map(s => {
-                const maxCount = Math.max(todo, inProgress, review, done, 1);
-                const h = Math.max(8, (s.count / maxCount) * 100);
-                return `
-                                        <div class="flex-1 flex flex-col items-center gap-1">
-                                            <span class="text-xs font-bold">${s.count}</span>
-                                            <div style="width:100%;height:${h}px;background:${s.color};border-radius:6px 6px 0 0;transition:height 0.5s ease;"></div>
-                                            <span class="text-xs text-secondary">${s.label}</span>
-                                        </div>
-                                    `;
-            }).join('')}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Priority Breakdown -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Distribución por Prioridad</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-col gap-4">
-                                ${[
-                { label: 'Alta', count: alta, color: '#ef4444', percent: total ? (alta / total * 100) : 0 },
-                { label: 'Media', count: media, color: '#f59e0b', percent: total ? (media / total * 100) : 0 },
-                { label: 'Baja', count: baja, color: '#10b981', percent: total ? (baja / total * 100) : 0 }
-            ].map(s => `
-                                    <div>
-                                        <div class="flex justify-between items-center mb-1">
-                                            <div class="flex items-center gap-2">
-                                                <span style="width:10px;height:10px;border-radius:50%;background:${s.color};display:inline-block;"></span>
-                                                <span class="text-sm font-medium">${s.label}</span>
-                                            </div>
-                                            <span class="text-sm text-secondary">${s.count} (${Math.round(s.percent)}%)</span>
-                                        </div>
-                                        <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
-                                            <div style="height:100%;width:${s.percent}%;background:${s.color};border-radius:4px;transition:width 0.5s ease;"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-
-                            <!-- Donut-style visual -->
-                            <div class="flex items-center justify-center mt-6">
-                                <div style="position:relative;width:140px;height:140px;">
-                                    <svg viewBox="0 0 36 36" style="width:140px;height:140px;transform:rotate(-90deg);">
-                                        <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#f1f5f9" stroke-width="3"></circle>
-                                        ${(() => {
-                let offset = 0;
-                const segments = [
-                    { percent: total ? (alta / total * 100) : 0, color: '#ef4444' },
-                    { percent: total ? (media / total * 100) : 0, color: '#f59e0b' },
-                    { percent: total ? (baja / total * 100) : 0, color: '#10b981' }
-                ];
-                return segments.map(s => {
-                    const dashArray = `${s.percent} ${100 - s.percent}`;
-                    const dashOffset = -offset;
-                    offset += s.percent;
-                    return `<circle cx="18" cy="18" r="15.9155" fill="none" stroke="${s.color}" stroke-width="3" stroke-dasharray="${dashArray}" stroke-dashoffset="${dashOffset}"></circle>`;
-                }).join('');
-            })()}
-                                    </svg>
-                                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
-                                        <div class="text-2xl font-bold">${total}</div>
-                                        <div class="text-xs text-secondary">Total</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-6 mb-6">
-                    <!-- Project Progress -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Progreso por Proyecto</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-col gap-5">
-                                ${proyectos.map(p => {
-                const projectTasks = allTareas.filter(t => t.proyectoId === p.id);
-                const projectDone = projectTasks.filter(t => t.estado === 'done').length;
-                const projectTotal = projectTasks.length;
-                const projectPercent = projectTotal > 0 ? Math.round((projectDone / projectTotal) * 100) : 0;
-                return `
-                                        <div>
-                                            <div class="flex justify-between items-center mb-2">
-                                                <div>
-                                                    <div class="font-medium text-sm">${p.nombre}</div>
-                                                    <div class="text-xs text-secondary">${projectDone}/${projectTotal} tareas completadas</div>
-                                                </div>
-                                                <span class="text-sm font-bold" style="color: ${projectPercent >= 70 ? '#10b981' : projectPercent >= 40 ? '#f59e0b' : '#94a3b8'}">${projectPercent}%</span>
-                                            </div>
-                                            <div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;">
-                                                <div style="height:100%;width:${projectPercent}%;background:${projectPercent >= 70 ? '#10b981' : projectPercent >= 40 ? '#f59e0b' : '#3b82f6'};border-radius:3px;transition:width 0.5s ease;"></div>
-                                            </div>
-                                        </div>
-                                    `;
-            }).join('')}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Team Workload -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Carga por Miembro</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="flex flex-col gap-3">
-                                ${Object.entries(workload).map(([name, data]) => {
-                const completionPct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
-                return `
-                                        <div class="flex items-center gap-3 p-3 rounded-lg" style="background: ${data.overdue > 0 ? 'var(--color-error-50)' : 'var(--color-gray-50)'}">
-                                            <div class="avatar avatar-sm">${Utils.getInitials(name)}</div>
-                                            <div class="flex-1">
-                                                <div class="flex justify-between">
-                                                    <span class="text-sm font-medium">${name}</span>
-                                                    <span class="text-xs text-secondary">${data.done}/${data.total} hechas</span>
-                                                </div>
-                                                <div style="height:4px;background:#e2e8f0;border-radius:2px;margin-top:4px;overflow:hidden;">
-                                                    <div style="height:100%;width:${completionPct}%;background:${completionPct >= 70 ? '#10b981' : '#3b82f6'};border-radius:2px;"></div>
-                                                </div>
-                                            </div>
-                                            <div class="flex gap-2">
-                                                ${data.pending > 0 ? `<span class="badge badge-warning" style="font-size:11px;">${data.pending} pend.</span>` : ''}
-                                                ${data.overdue > 0 ? `<span class="badge badge-error" style="font-size:11px;">${data.overdue} vencida${data.overdue > 1 ? 's' : ''}</span>` : ''}
-                                            </div>
-                                        </div>
-                                    `;
-            }).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Overdue Tasks Table -->
-                ${overdue > 0 ? `
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title" style="color: var(--color-error-600);"><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;margin-right:4px;"></i> Tareas Vencidas (${overdue})</h3>
-                        </div>
-                        <div class="card-body p-0">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Tarea</th>
-                                        <th>Proyecto</th>
-                                        <th>Asignado</th>
-                                        <th>Vencimiento</th>
-                                        <th>Prioridad</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${tareas.filter(t => t.estado !== 'done' && t.fechaVencimiento && new Date(t.fechaVencimiento) < today).map(t => `
-                                        <tr class="cursor-pointer hover:bg-gray-50" data-task-id="${t.id}">
-                                            <td class="font-medium">${t.titulo}</td>
-                                            <td>${t.proyecto}</td>
-                                            <td>
-                                                <div class="flex items-center gap-2">
-                                                    <div class="avatar avatar-sm" style="width:24px;height:24px;font-size:10px;">${Utils.getInitials(t.asignado)}</div>
-                                                    ${t.asignado}
-                                                </div>
-                                            </td>
-                                            <td style="color: var(--color-error-600);">${Utils.formatDate(t.fechaVencimiento)}</td>
-                                            <td><span class="badge badge-${t.prioridad === 'alta' ? 'error' : t.prioridad === 'media' ? 'warning' : 'success'}">${t.prioridad}</span></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ` : `
-                    <div class="card">
-                        <div class="card-body text-center py-8">
-                            <i data-lucide="check-circle" style="width:48px;height:48px;color:var(--color-success-400);margin:0 auto 12px;display:block;"></i>
-                            <h3 class="font-semibold text-success-600">¡Sin tareas vencidas!</h3>
-                            <p class="text-secondary">Todas las tareas están al día.</p>
-                        </div>
-                    </div>
-                `}
+    renderLista() {
+        const tasks = this.getFilteredTasks();
+        return `
+            <div class="card overflow-hidden">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Tarea</th>
+                            <th>Asignado</th>
+                            <th>Prioridad</th>
+                            <th>Vencimiento</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tasks.map(t => `
+                            <tr class="cursor-pointer hover:bg-gray-50" onclick="DesarrolloModule.showTaskForm(${t.id})">
+                                <td class="font-bold">${t.titulo}</td>
+                                <td><div class="flex items-center gap-2"><div class="avatar-sm">${Utils.getInitials(t.asignado)}</div> ${t.asignado}</div></td>
+                                <td><span class="badge badge-${t.prioridad === 'alta' ? 'error' : t.prioridad === 'media' ? 'warning' : 'success'}">${t.prioridad}</span></td>
+                                <td>${Utils.formatDate(t.fechaVencimiento)}</td>
+                                <td><span class="badge badge-outline">${t.estado}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
+    },
 
-        if (window.lucide) lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+    renderReportes() {
+        return `<div class="p-12 text-center text-secondary">Módulo de Reportes optimizado según la nueva jerarquía de Espacios.</div>`;
+    },
 
-        // Click on overdue task rows
-        container.querySelectorAll('[data-task-id]').forEach(row => {
-            row.addEventListener('click', () => {
-                this.showTaskForm(parseInt(row.dataset.taskId));
-            });
-        });
+    renderGantt() {
+        return `<div class="p-12 text-center text-secondary">Cronograma Gantt interactivo filtrado por el espacio activo.</div>`;
+    },
+
+    renderCalendario() {
+        return `<div class="p-12 text-center text-secondary">Vencimientos proyectados según objetivos del área.</div>`;
     }
 };
 

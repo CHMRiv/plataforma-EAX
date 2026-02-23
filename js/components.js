@@ -100,12 +100,12 @@ const Components = {
     // Page header
     pageHeader({ title, subtitle = '', actions = [] }) {
         return `
-            <div class="page-header">
-                <div class="page-header-left">
-                    <h1 class="page-title">${title}</h1>
-                    ${subtitle ? `<p class="page-subtitle">${subtitle}</p>` : ''}
+            <div class="welcome-section flex justify-between items-center">
+                <div>
+                    <h1 class="welcome-title">${title}</h1>
+                    ${subtitle ? `<p class="welcome-subtitle">${subtitle}</p>` : ''}
                 </div>
-                <div class="page-header-actions">
+                <div class="header-right">
                     ${actions.map(action => `
                         <button class="btn ${action.class || 'btn-secondary'}" data-action="${action.action || ''}">
                             ${action.icon ? `<i data-lucide="${action.icon}"></i>` : ''}
@@ -119,17 +119,20 @@ const Components = {
 
     // Stat card
     statCard({ icon, label, value, change = null, iconClass = 'primary' }) {
+        const trendDir = change >= 0 ? 'up' : 'down';
         return `
-            <div class="card stat-card">
-                <div class="stat-icon ${iconClass}">
-                    <i data-lucide="${icon}"></i>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-label">${label}</span>
+                    <div class="stat-icon-wrapper">
+                        <i data-lucide="${icon}"></i>
+                    </div>
                 </div>
                 <div class="stat-value">${value}</div>
-                <div class="stat-label">${label}</div>
-                ${change ? `
-                    <div class="stat-change ${change >= 0 ? 'positive' : 'negative'}">
-                        <i data-lucide="${change >= 0 ? 'trending-up' : 'trending-down'}"></i>
-                        ${Math.abs(change)}%
+                ${change !== null ? `
+                    <div class="stat-footer stat-trend-${trendDir}">
+                        <i data-lucide="trending-${trendDir}"></i>
+                        ${Math.abs(change)}% vs mes pasado
                     </div>
                 ` : ''}
             </div>
